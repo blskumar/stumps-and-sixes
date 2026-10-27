@@ -107,7 +107,8 @@ console.log('\n--- H: high-score history');
   G.score=15;G.level=1;G.balls=4;G.best={runs:6,label:'PERFECT!',kmh:100,dist:60};mm.fire('restart','click');
   const r=A.HS.load();check('score>0 recorded on restart',r.length===1&&r[0].score===15&&r[0].level===1&&r[0].balls===4&&/6/.test(r[0].best)&&/PERFECT/.test(r[0].best)&&r[0].date,JSON.stringify(r));
   // bowled records exactly once
-  A.restart();A.HS.clear();G.cd=.001;let k=0;while(G.phase!=='live'&&k++<4000)A.update(1/240);G.expect.zS=0;G.expect.yS=.2;G.score=33;
+  let k=0;const CF=A.CFG;for(let sd=1;sd<400;sd++){mm.seed(sd*17);A.restart();A.HS.clear();G.cd=.001;k=0;while(G.phase!=='live'&&k++<4000)A.update(1/240);const e=G.expect;if(Math.abs(e.zS)<=CF.STUMP_W/2+CF.BALL_R&&e.yS<=CF.STUMP_H+CF.BALL_R)break}
+  G.score=33;
   for(k=0;G.phase==='live'&&k<40000;k++)A.update(1/240);
   if(G.over){for(let i=0;i<240*5;i++)A.update(1/240);check('bowled innings recorded exactly once',A.HS.load().length===1&&A.HS.top()===33);mm.fire('restart','click');check('restart after bowled does not double-record',A.HS.load().length===1)}
   else check('bowled path reached',false,G.phase);

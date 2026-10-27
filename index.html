@@ -116,6 +116,24 @@
   #tip b{color:#ffd84a;display:block;font-size:12px;letter-spacing:.06em;margin-bottom:2px}
   #tip .x{position:absolute;right:10px;top:6px;opacity:.6;font-size:11px}
   #tip.min{width:auto;padding:6px 12px}#tip.min #tipBody,#tip.min .x{display:none}#tip.min b{margin:0}
+  #home button.who{width:100%;margin-bottom:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);padding:11px 14px}
+  #home button.who b{color:#ffd84a}#home button.who .chev{margin-left:auto;opacity:.7}
+  #home .plist{display:flex;flex-direction:column;gap:8px;text-align:left}
+  #home .prow{display:flex;align-items:center;gap:8px;background:rgba(10,22,40,.7);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 10px}
+  #home .prow.on{border-color:#ffd84a;background:rgba(255,216,74,.12)}
+  #home .prow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+  #home .prow .nm small{display:block;font-weight:500;font-size:11px;opacity:.75}
+  #home .prow button{padding:7px 12px;font-size:13px;border-radius:9px;display:inline-block;text-align:center}
+  #home .prow button.del{background:#7b2d26}#home .prow button.del.arm{background:#c0392b}
+  #home .addrow{display:flex;gap:8px}
+  #home input{flex:1;min-width:0;background:#0d2238;color:#fff;border:1px solid #3a5878;border-radius:10px;padding:11px;font:600 16px Arial,sans-serif;user-select:text;-webkit-user-select:text}
+  #home .addrow button{padding:0 18px;justify-content:center}
+  #home .pmsg{min-height:18px;margin-top:6px;font-size:13px;color:#ff9f8f;text-align:left}
+  .hsTabs{display:flex;gap:6px;justify-content:center;margin:6px 0 4px}
+  #panel2 .hsTabs button.tab{margin:0;padding:7px 14px;font-size:13px;background:#34495e}
+  #panel2 .hsTabs button.tab.on{background:#1e9d54}
+  #panel td.pl,#panel2 td.pl{text-align:left;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media (max-width:520px){ #panel th:nth-child(6),#panel td:nth-child(6),#panel2 th:nth-child(6),#panel2 td:nth-child(6){display:none} #panel,#panel2{padding:20px 14px;min-width:0;width:92vw;box-sizing:border-box} #panel table,#panel2 table{min-width:0;width:100%} }
   #modeTag{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(8,20,36,.8);border:1px solid rgba(255,255,255,.25);
     border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
 </style>
@@ -134,7 +152,8 @@
   <div class="stat"><span>START AT</span><select id="lvlSel"></select></div>
   <div class="stat wide"><span>LAST SHOT</span><b id="last">&mdash;</b><small id="lastDetail">&nbsp;</small></div>
   <div class="stat wide"><span>BEST SHOT</span><b id="best">&mdash;</b><small id="bestDetail">&nbsp;</small></div>
-  <div class="stat"><span>HIGH SCORE</span><b id="hi">0</b></div>
+  <div class="stat"><span>PLAYER</span><b id="hudPlayer" style="font-size:16px;max-width:130px;overflow:hidden;text-overflow:ellipsis">&mdash;</b></div>
+  <div class="stat"><span>YOUR BEST</span><b id="hi">0</b></div>
   <button id="scoresBtn" type="button">Scores</button>
   <button id="mapBtn" type="button">Map</button>
   <div class="stat snd"><button id="mute" type="button" title="Mute / unmute (M)" aria-label="Mute or unmute sound"><svg id="spk" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg></button><input id="vol" type="range" min="0" max="100" step="1" value="80" aria-label="Volume" title="Volume (Up / Down keys)"><span id="volTxt">80%</span></div>
@@ -151,6 +170,7 @@
    <span class="ball"></span>
    <h1>STUMPS <em>&amp;</em> SIXES</h1>
    <div class="tag">2D cricket batting &middot; real ball physics &middot; time your shot</div>
+   <button id="bProf" type="button" class="who" aria-label="Choose or add a player"><span class="ic">&#128100;</span><span>Player: <b id="whoName"></b><small>tap to switch player or add a new one</small></span><span class="chev">&#9656;</span></button>
    <div class="menu">
     <button id="hmResume" type="button" class="primary hidden"><span class="ic">&#9654;</span><span>Resume<small>carry on where you paused</small></span></button>
     <button id="hmPlay" type="button" class="primary"><span class="ic">&#127951;</span><span>Play Match<small>5 levels &middot; out only if bowled &middot; high scores</small></span></button>
@@ -160,6 +180,17 @@
     <button id="bCtl" type="button"><span class="ic">&#9000;</span><span>Controls<small>keyboard, mouse and touch</small></span></button>
     <button id="hmScores" type="button"><span class="ic">&#127942;</span><span>High Scores<small>your best innings</small></span></button>
    </div>
+  </div>
+
+  <div id="hmProf" class="pg hidden">
+   <h1 style="font-size:28px;margin-bottom:4px">PLAYERS</h1>
+   <div class="tag" style="margin-bottom:10px">Each player keeps their own scores. Pick who is batting.</div>
+   <div id="profList" class="plist"></div>
+   <label for="profName">ADD A NEW PLAYER</label>
+   <div class="addrow"><input id="profName" type="text" maxlength="20" placeholder="Name (up to 20 letters)" autocomplete="off" autocapitalize="words" spellcheck="false"><button id="profAdd" type="button" class="primary">Add</button></div>
+   <div id="profMsg" class="pmsg" role="status"></div>
+   <div class="tag" style="margin:10px 0 0;font-size:12px">Switching player during a match starts a fresh innings (the current one is saved for the player who was batting).</div>
+   <button id="hmProfBack" type="button" class="back">&larr; Back</button>
   </div>
 
   <div id="hmHow" class="pg hidden">
@@ -219,6 +250,7 @@
 <div id="over" class="hidden">
   <div id="panel">
     <h1>BOWLED!</h1><div id="oNew" class="newhs"></div>
+    <div class="lbl">PLAYER</div><div class="val" id="oPlayer">&mdash;</div>
     <div class="lbl">FINAL SCORE</div><div class="big" id="oScore">0</div>
     <div class="lbl">BALLS FACED</div><div class="val" id="oBalls">0</div>
     <div class="lbl">LEVEL REACHED</div><div class="val" id="oLevel">1</div>
@@ -231,6 +263,7 @@
 <div id="hs" class="hidden">
   <div id="panel2">
     <h1>HIGH SCORES</h1>
+    <div class="hsTabs"><button id="hsAll" type="button" class="tab on">All players</button><button id="hsMine" type="button" class="tab">My scores</button></div>
     <div id="hsList"></div>
     <div style="margin-top:16px"><button id="hsClear" type="button" class="alt">Clear history</button><button id="hsHome" type="button" class="alt">Home</button><button id="hsClose" type="button">Close</button></div>
   </div>
@@ -757,26 +790,76 @@ const SFX = (() => {
 /* ---------------------------------------------------------------------
  *  HIGH-SCORE HISTORY  (localStorage, wrapped so the game works without)
  * ------------------------------------------------------------------- */
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // stored data is untrusted text
+
+/* ---------------------------------------------------------------------
+ *  PLAYER PROFILES  (several people can share one browser; scores are saved per profile)
+ * ------------------------------------------------------------------- */
+const PF_KEY = 'cricketProfiles', PF_ACTIVE_KEY = 'cricketActiveProfile', PF_MAX = 12, PF_NAME_MAX = 20;
+const PF = {
+  list: [], active: null, mem: null,
+  clean(n) { return String(n == null ? '' : n).replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, PF_NAME_MAX).trim(); },
+  newId() { return 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); },
+  load() {
+    let a = [], act = null;
+    try { a = JSON.parse(localStorage.getItem(PF_KEY) || '[]'); act = localStorage.getItem(PF_ACTIVE_KEY); } catch (e) { a = (this.mem && this.mem.list) || []; act = this.mem && this.mem.active; }
+    const seen = new Set();
+    this.list = (Array.isArray(a) ? a : []).filter(r => r && typeof r === 'object' && typeof r.id === 'string' && r.id && !seen.has(r.id) && seen.add(r.id)).map(r => ({ id: r.id.slice(0, 40), name: this.clean(r.name) || 'Player' })).slice(0, PF_MAX);
+    if (!this.list.length) this.list.push({ id: this.newId(), name: 'Player 1' });
+    this.active = this.list.find(r => r.id === act) || this.list[0];
+    this.save();
+  },
+  save() { this.mem = { list: this.list, active: this.active && this.active.id }; try { localStorage.setItem(PF_KEY, JSON.stringify(this.list)); localStorage.setItem(PF_ACTIVE_KEY, this.active.id); } catch (e) {} },
+  nameTaken(name, exceptId) { return this.list.some(r => r.id !== exceptId && r.name.toLowerCase() === name.toLowerCase()); },
+  add(name) {
+    const n = this.clean(name);
+    if (!n) return { ok: false, err: 'Type a name first.' };
+    if (this.nameTaken(n)) return { ok: false, err: 'There is already a player called "' + n + '".' };
+    if (this.list.length >= PF_MAX) return { ok: false, err: 'Up to ' + PF_MAX + ' players. Delete one first.' };
+    const r = { id: this.newId(), name: n }; this.list.push(r); this.active = r; this.save();
+    return { ok: true, profile: r };
+  },
+  rename(id, name) {
+    const n = this.clean(name), r = this.list.find(x => x.id === id);
+    if (!r || !n) return { ok: false, err: 'Type a name first.' };
+    if (this.nameTaken(n, id)) return { ok: false, err: 'There is already a player called "' + n + '".' };
+    r.name = n; this.save(); return { ok: true };
+  },
+  select(id) { const r = this.list.find(x => x.id === id); if (!r) return false; this.active = r; this.save(); return true; },
+  remove(id) {                                  // the last profile cannot be deleted; its scores go with it
+    if (this.list.length <= 1) return false;
+    const i = this.list.findIndex(x => x.id === id); if (i < 0) return false;
+    this.list.splice(i, 1); if (this.active.id === id) this.active = this.list[0];
+    this.save(); return true;
+  }
+};
+PF.load();
+
 const HS = {
   load() { try { const a = JSON.parse(localStorage.getItem(HS_KEY) || '[]'); return Array.isArray(a) ? a.filter(r => r && typeof r === 'object' && isFinite(r.score)) : []; } catch (e) { return this.mem || []; } },
   save(list) { this.mem = list; try { localStorage.setItem(HS_KEY, JSON.stringify(list)); } catch (e) {} },
   top() { const l = this.load(); return l.length ? l[0].score : 0; },
+  topFor(pid) { let b = 0; for (const r of this.load()) if (r.pid === pid && r.score > b) b = r.score; return b; },
+  countFor(pid) { return this.load().filter(r => r.pid === pid).length; },
+  removeFor(pid) { this.save(this.load().filter(r => r.pid !== pid)); },
   /** Record an innings; returns its rank (1-based) in the table or 0 if it did not make it. */
   add(rec) {
     const list = this.load(); list.push(rec);
     list.sort((a, b) => b.score - a.score || b.level - a.level || a.balls - b.balls);
     const rank = list.indexOf(rec) + 1;
-    this.save(list.slice(0, HS_MAX));
+    const mine = list.filter(r => r.pid === rec.pid); this.lastPersonal = mine.indexOf(rec) + 1;       // rank among this player's own innings
+    const seen = {}, keep = list.filter(r => { const k = r.pid || ''; seen[k] = (seen[k] || 0) + 1; return seen[k] <= HS_MAX; });   // each player keeps their own top 10
+    this.save(keep);
     return rank <= HS_MAX ? rank : 0;
   },
   clear() { this.save([]); },
-  html(n, hi) {
-    const list = this.load().slice(0, n);
+  html(n, hi, pid) {
+    const list = this.load().filter(r => !pid || r.pid === pid).slice(0, n);
     if (!list.length) return '<div class="empty">No scores yet. Go and get some runs!</div>';
-    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // stored data is untrusted text
-    let h = '<table><tr><th>#</th><th>Score</th><th>Level</th><th>Balls</th><th>Best shot</th><th>Date</th></tr>';
+    const esc = escHtml;
+    let h = '<table><tr><th>#</th><th>Player</th><th>Score</th><th>Level</th><th>Balls</th><th>Best shot</th><th>Date</th></tr>';
     list.forEach((r, i) => {
-      h += '<tr' + (hi === i + 1 ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td><b>' + (+r.score || 0) + '</b></td><td>' + ((+r.level || 0) + 1) + '</td><td>' + (+r.balls || 0) +
+      h += '<tr' + (hi === i + 1 ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td class="pl">' + esc(r.player || '\u2014') + '</td><td><b>' + (+r.score || 0) + '</b></td><td>' + ((+r.level || 0) + 1) + '</td><td>' + (+r.balls || 0) +
         '</td><td>' + esc(r.best || '\u2014') + '</td><td>' + esc(r.date || '') + '</td></tr>';
     });
     return h + '</table>';
@@ -935,14 +1018,14 @@ function checkLevelUp() {
   if (up) { applyLevel(G.level); announceLevel(true); }
 }
 
-let hsOpen = false, hiCache = HS.top();
+let hsOpen = false, hiCache = HS.topFor(PF.active.id), hsView = 'all';
 function recordInnings() {                 // store a finished/abandoned innings in the high-score table
   if (mode !== 'match' || G.saved || G.score <= 0) return 0;   // only real matches reach the high-score table
   G.saved = true;
   let date = '';
   try { date = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' }); } catch (e) {}
-  const rank = HS.add({ score: G.score, balls: G.balls, level: G.level, best: G.best ? G.best.runs + ' (' + G.best.label + ')' : '', date });
-  hiCache = HS.top();
+  const rank = HS.add({ score: G.score, balls: G.balls, level: G.level, best: G.best ? G.best.runs + ' (' + G.best.label + ')' : '', date, player: PF.active.name, pid: PF.active.id });
+  hiCache = HS.topFor(PF.active.id);
   return rank;
 }
 function pickWeighted(w) {
@@ -964,7 +1047,7 @@ function resetGame() {
     swing: { active: false, t: 0, used: false },
     bowler: { x: BOWL.HOME_X, state: 'idle', t: 0, t2: 0, ph: 0, dir: -1, psi: deg(15), vx: 0, released: false, runT: BOWL.RUN_T, startX: BOWL.START_X },
     stumpsDown: false, parts: [], camTrack: false,
-    level: startLevel, callout: null, levelBanner: null, tag: null, ropeHit: null, hist: [], deliveryInfo: '', saved: false, hsRank: 0
+    level: startLevel, callout: null, levelBanner: null, tag: null, ropeHit: null, hist: [], deliveryInfo: '', saved: false, hsRank: 0, hsPersonal: 0
   });
   FX.reset(); applyLevel(G.level); announceLevel(false);
   $('over').classList.add('hidden');
@@ -1115,7 +1198,7 @@ function ballBowled(b, vx, vy) {
   G.last = { label: real ? 'BOWLED!' : 'Bowled', color: real ? '#ff5a4a' : '#ff9f5a', timing: '\u2014', kmh: null, runs: 0, dirName: '' };
   setBanner(real ? 'BOWLED!' : 'Bowled', real ? '#ff5a4a' : '#ff9f5a', real ? 'missed it, and it hit the stumps' : (mode === 'demo' ? 'the demo batsman missed that one' : 'no wicket in practice \u00b7 keep going'), '', real);
   SFX.stumps(); fxStumps();
-  if (real) { SFX.cheer(0.9); fxCamFlashes(); G.hsRank = recordInnings(); }   // wicket: crash of timber, then the crowd roars
+  if (real) { SFX.cheer(0.9); fxCamFlashes(); G.hsRank = recordInnings(); G.hsPersonal = G.saved ? HS.lastPersonal : 0; }   // wicket: crash of timber, then the crowd roars
   // the ball carries on, slower, after knocking the stumps out
   b.vx = -Math.abs(vx) * 0.35; b.vy = Math.abs(vy) * 0.4 + 1.2; b.vz *= 0.3;
   // stumps and bails fly
@@ -1310,7 +1393,8 @@ function showOver() {
   if (!$('over').classList.contains('hidden')) return;
   $('oScore').textContent = G.score; $('oBalls').textContent = G.balls;
   $('oLevel').textContent = (G.level + 1) + ' \u00b7 ' + LEVELS[G.level].name;
-  $('oNew').textContent = G.hsRank === 1 ? 'NEW HIGH SCORE!' : G.hsRank > 0 ? 'Top ' + HS_MAX + ' finish: #' + G.hsRank : '';
+  $('oNew').textContent = G.hsRank === 1 ? 'NEW HIGH SCORE!' : G.hsPersonal === 1 ? 'NEW PERSONAL BEST!' : G.hsRank > 0 ? 'Top ' + HS_MAX + ' finish: #' + G.hsRank : G.hsPersonal > 0 ? 'Your #' + G.hsPersonal + ' innings' : '';
+  $('oPlayer').textContent = PF.active.name;
   $('oList').innerHTML = HS.html(5, G.hsRank);
   $('oBest').textContent = G.best ? G.best.runs + ' runs \u00b7 ' + G.best.label + ' \u00b7 ' + G.best.kmh + ' km/h' : 'none';
   $('over').classList.remove('hidden');
@@ -1850,7 +1934,7 @@ $('toggle').addEventListener('click', e => { setHud(hudEl.classList.contains('mi
 $('mapBtn').addEventListener('click', e => { showMap = !showMap; e.currentTarget.textContent = showMap ? 'Hide map' : 'Map'; e.currentTarget.blur(); });
 $('mapBtn').textContent = showMap ? 'Hide map' : 'Map';
 /* ---- home screen / modes */
-const PAGES = ['hmMain', 'hmHow', 'hmCtl', 'hmPrac'];
+const PAGES = ['hmMain', 'hmHow', 'hmCtl', 'hmPrac', 'hmProf'];
 function showPage(id) { for (const p of PAGES) $(p).classList.toggle('hidden', p !== id); $('homeFloat').classList.toggle('off', id === 'hmMain'); }
 function updateModeUI() {
   const t = $('modeTag'), hint = $('hint');
@@ -1863,6 +1947,48 @@ function setApp(state) {
   if (home) { showPage('hmMain'); $('hmResume').classList.toggle('hidden', !(started && mode !== 'demo')); }
   updateModeUI(); updateTip();
 }
+function updateWho() { $('whoName').textContent = PF.active.name; $('hudPlayer').textContent = PF.active.name; hiCache = HS.topFor(PF.active.id); }
+function chooseProfile(id) {                       // a different player starts a fresh innings (the old one is banked for the player who batted it)
+  if (PF.active.id === id) return;
+  if (started && mode === 'match') restart();      // restart() banks the innings under the profile that played it
+  PF.select(id); G.hsRank = 0; updateWho(); updateHUD();
+}
+let profArm = null, profTimer = 0;
+function renderProfiles() {
+  const box = $('profList'); box.textContent = '';
+  for (const r of PF.list) {
+    const row = document.createElement('div'); row.className = 'prow' + (r.id === PF.active.id ? ' on' : '');
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = r.name;
+    const sm = document.createElement('small'), n = HS.countFor(r.id); sm.textContent = n ? 'Best ' + HS.topFor(r.id) + ' \u00b7 ' + n + ' saved innings' : 'No scores yet'; nm.appendChild(sm);
+    const sel = document.createElement('button'); sel.type = 'button'; sel.textContent = r.id === PF.active.id ? '\u2713 Playing' : 'Select';
+    sel.addEventListener('click', () => { chooseProfile(r.id); renderProfiles(); });
+    row.appendChild(nm); row.appendChild(sel);
+    if (PF.list.length > 1) {
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'del' + (profArm === r.id ? ' arm' : ''); del.textContent = profArm === r.id ? 'Sure? deletes ' + n + ' score' + (n === 1 ? '' : 's') : 'Delete';
+      del.addEventListener('click', () => {
+        if (profArm !== r.id) { profArm = r.id; clearTimeout(profTimer); profTimer = setTimeout(() => { profArm = null; renderProfiles(); }, 3500); renderProfiles(); return; }
+        profArm = null; clearTimeout(profTimer);
+        if (PF.active.id === r.id && started && mode === 'match') restart();
+        HS.removeFor(r.id); PF.remove(r.id); updateWho(); renderProfiles();
+      });
+      row.appendChild(del);
+    }
+    box.appendChild(row);
+  }
+}
+function addProfile() {
+  const inp = $('profName'), res = PF.add(inp.value);
+  if (!res.ok) { $('profMsg').textContent = res.err; return; }
+  if (started && mode === 'match') restart();
+  inp.value = ''; $('profMsg').textContent = ''; G.hsRank = 0; updateWho(); updateHUD(); renderProfiles();
+}
+$('bProf').addEventListener('click', () => { renderProfiles(); $('profMsg').textContent = ''; showPage('hmProf'); });
+$('hmProfBack').addEventListener('click', () => showPage('hmMain'));
+$('profAdd').addEventListener('click', addProfile);
+$('profName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addProfile(); } });
+$('hsAll').addEventListener('click', () => { hsView = 'all'; renderScores(); });
+$('hsMine').addEventListener('click', () => { hsView = 'mine'; renderScores(); });
+updateWho();
 function goHome() { SFX.resume(); closeScores(); $('over').classList.add('hidden'); setApp('home'); }
 function resumeGame() { setApp('play'); if (G.over) showOver(); }
 function startMode(m) {
@@ -1893,7 +2019,12 @@ for (const id of ['hmHowBack', 'hmCtlBack', 'hmPracBack']) $(id).addEventListene
 $('menuBtn').addEventListener('click', e => { goHome(); e.currentTarget.blur(); });
 for (const id of ['homeBtn', 'overHome', 'hsHome']) $(id).addEventListener('click', e => { goHome(); if (e.currentTarget && e.currentTarget.blur) e.currentTarget.blur(); });
 $('homeFloat').addEventListener('click', () => showPage('hmMain'));
-function openScores() { hsOpen = true; $('hsList').innerHTML = HS.html(10); $('hs').classList.remove('hidden'); }
+function renderScores() {
+  $('hsAll').classList.toggle('on', hsView === 'all'); $('hsMine').classList.toggle('on', hsView === 'mine');
+  $('hsMine').textContent = 'My scores (' + PF.active.name + ')';
+  $('hsList').innerHTML = HS.html(10, 0, hsView === 'mine' ? PF.active.id : '');
+}
+function openScores() { hsOpen = true; renderScores(); $('hs').classList.remove('hidden'); }
 function closeScores() { hsOpen = false; $('hs').classList.add('hidden'); }
 updateSound();
 $('mute').addEventListener('click', e => { toggleMute(); e.currentTarget.blur(); });
@@ -1905,11 +2036,12 @@ let hsArm = false;
 $('hsClear').addEventListener('click', e => {            // two-step clear (no blocking confirm dialog)
   const bt = e.currentTarget;
   if (!hsArm) { hsArm = true; bt.textContent = 'Click again to confirm'; setTimeout(() => { hsArm = false; bt.textContent = 'Clear history'; }, 3000); }
-  else { HS.clear(); hiCache = 0; hsArm = false; bt.textContent = 'Clear history'; $('hsList').innerHTML = HS.html(10); }
+  else { HS.clear(); hiCache = 0; hsArm = false; bt.textContent = 'Clear history'; renderScores(); }
 });
 $('lvlSel').innerHTML = LEVELS.map((l, i) => '<option value="' + i + '">' + (i + 1) + ' \u00b7 ' + l.name + '</option>').join('');
 $('lvlSel').addEventListener('change', e => { startLevel = +e.target.value; restart(); e.target.blur(); });
 function onKey(e) {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'text') return;   // typing a player name: the keys are not game controls
   if (e.__cricketHandled) return; e.__cricketHandled = true;      // registered on window and document: handle each key press once
   const code = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) ? 'Escape' : e.code;
   SFX.resume();
@@ -1953,7 +2085,7 @@ function frame(ts) {
 
 resetGame(); resize(); updateHUD(); setApp('home');
 window.__cricket = { project: (x, y, z) => [SX(x), SY(y, z)], view: () => ({ sc, gy, hz, dp, zK, zC }), FX, SFX, HS, LEVELS, DTYPES, applyLevel, checkLevelUp, G, CFG, BOWL, update, render, doSwing, restart, resize, planDelivery, solveDelivery,
-  simulateFlight, stepBall, setApp, startMode, goHome, resumeGame, getState: () => ({ mode, appState, started, practiceType }), batAngle, T_IDEAL, SWING_TOTAL, setView: (w, h) => { W = w; H = h; } };
+  simulateFlight, stepBall, PF, setApp, startMode, goHome, resumeGame, getState: () => ({ mode, appState, started, practiceType }), batAngle, T_IDEAL, SWING_TOTAL, setView: (w, h) => { W = w; H = h; } };
 requestAnimationFrame(frame);
 })();
 </script>

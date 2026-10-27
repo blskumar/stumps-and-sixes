@@ -8,6 +8,7 @@ A 2D side-view cricket batting game in a single HTML file. No libraries, no asse
 - **Play Match** - five levels (Club Nets to Storm Chasers), each faster than the last. You are only out if you miss the ball *and* it hits the stumps (BOWLED). Scores go into a local top-10 table.
 - **Practice** - no wickets; choose the delivery (yorker, bouncer, swing, off-break, googly...) and level. Coaching tips appear before and after every ball.
 - **Watch Demo** - the computer bats.
+- **Players** - create several profiles (up to 12) on one device; each keeps their own top-10 scores, personal best and a "My scores" view. Switching player mid-match saves the current innings for whoever was batting.
 - **How to Play / Controls / High Scores** from the home screen; a home icon is on every screen.
 
 ## How it plays
@@ -26,13 +27,13 @@ Open `index.html` in a browser (or `npx serve .`).
 ```
 npm install
 npm test          # levels/deliveries, boundary rules, dismissal rule, audio + high scores (Node, headless canvas)
-npm run test:e2e  # real-browser checks (Playwright): home screen, modes, practice tips
+npm run test:e2e  # real-browser checks (Playwright): home screen, modes, practice tips, player profiles
 npm run sweep     # brute-force every swing timing against many deliveries
 npm run soak      # long random-play stress test
 ```
 
 ## Security notes
-Static page with no network access (CSP `default-src 'none'`), no external resources and no cookies. The only persisted data is the volume, mute flag and local high scores in `localStorage`; stored text is HTML-escaped before it is shown.
+Static page with no network access (CSP `default-src 'none'`), no external resources and no cookies. The only persisted data is the volume, mute flag, player names and local high scores in `localStorage` (nothing leaves your browser); stored text is HTML-escaped before it is shown and names are stripped of markup.
 
 ## License
 MIT
