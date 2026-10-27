@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Stumps &amp; Sixes: a 2D cricket batting game with real ball physics. Time your shot, hit fours and sixes, survive five levels.">
+<meta name="theme-color" content="#10301a">
+<title>Stumps &amp; Sixes - Cricket Batting</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#10301a;color:#fff;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  canvas{position:fixed;left:0;top:0;display:block}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;
+    pointer-events:none;align-items:stretch}
+  .stat{background:rgba(8,20,36,.66);border-radius:10px;padding:6px 12px;min-width:70px;
+    box-shadow:0 2px 8px rgba(0,0,0,.28)}
+  .stat span{display:block;font-size:10px;letter-spacing:.12em;opacity:.7}
+  .stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stat small{display:block;font-size:12px;opacity:.88;min-height:14px;white-space:nowrap}
+  .stat.wide{min-width:150px}
+  #restart{pointer-events:auto;cursor:pointer;align-self:center;border:0;border-radius:10px;
+    padding:11px 18px;font:700 14px inherit;font-family:inherit;color:#fff;background:#c0392b;
+    box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  #restart:hover{background:#d84a3a}
+  #hint{position:fixed;left:0;right:0;bottom:10px;text-align:center;font-size:13px;opacity:.85;
+    text-shadow:0 1px 3px #000;pointer-events:none}
+  #over,#hs{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.45);transition:opacity .35s}
+  #over.hidden,#hs.hidden{opacity:0;pointer-events:none}
+  #over,#hs{z-index:6}
+  #panel,#panel2{background:rgba(10,22,40,.95);border:2px solid #e74c3c;border-radius:16px;padding:26px 38px;
+    text-align:center;min-width:280px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #panel h1,#panel2 h1{margin:0 0 6px;font-size:36px;letter-spacing:.06em;color:#ff6b5b}
+  #panel .big{font-size:56px;font-weight:800;line-height:1.1}
+  #panel .lbl{font-size:11px;letter-spacing:.14em;opacity:.65;margin-top:12px}
+  #panel .val{font-size:19px;font-weight:600}
+  #panel button,#panel2 button{margin-top:20px;border:0;border-radius:10px;padding:12px 30px;font-size:16px;font-weight:700;
+    cursor:pointer;color:#fff;background:#27ae60;font-family:inherit}
+  #panel button:hover,#panel2 button:hover{background:#2ecc71}
+  #panel2 button.alt{background:#566573;margin-right:8px}
+  #panel2 h1{color:#ffd84a}
+  #hud button{pointer-events:auto;cursor:pointer;align-self:center;border:0;border-radius:10px;padding:11px 14px;
+    font:700 13px Arial,Helvetica,sans-serif;color:#fff;background:#34495e;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  #hud button:hover{background:#46627d}
+  #hud #restart{background:#c0392b}
+  #scoresBtn{margin-left:auto}
+  .snd{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 6px;pointer-events:auto}
+  #hud .snd button{padding:6px;background:transparent;box-shadow:none;line-height:0}
+  #hud .snd button:hover{background:rgba(255,255,255,.14)}
+  #vol{width:92px;accent-color:#ffd84a;cursor:pointer;pointer-events:auto}
+  #volTxt{font-size:12px;min-width:38px;font-variant-numeric:tabular-nums;opacity:.9}
+  .stat select{pointer-events:auto;background:#0d2238;color:#fff;border:1px solid #3a5878;border-radius:6px;
+    font:600 13px Arial,Helvetica,sans-serif;padding:3px;max-width:160px;margin-top:2px}
+  #panel table,#panel2 table{border-collapse:collapse;margin:8px auto 0;font-size:13px;min-width:260px}
+  #panel th,#panel2 th{font-size:10px;letter-spacing:.1em;opacity:.65;padding:3px 8px;text-align:center}
+  #panel td,#panel2 td{padding:4px 8px;text-align:center;border-top:1px solid rgba(255,255,255,.08)}
+  tr.me td{background:rgba(255,216,74,.18);color:#ffd84a}
+  .empty{opacity:.7;font-size:13px;margin:10px 0}
+  .newhs{color:#ffd84a;font-weight:800;letter-spacing:.08em;min-height:18px;margin-bottom:4px}
+  #panel{max-height:94vh;overflow:auto}
+  /* collapsible HUD: SCORE / BALLS / NEXT BALL stay visible, everything else lives behind the menu button */
+  #more{display:contents}
+  #hud.min #more{display:none}
+  #hud #toggle{pointer-events:auto;align-self:center;padding:9px 12px;font-size:16px;line-height:1;margin-left:auto}
+  #hud.min{flex-wrap:nowrap;gap:6px;padding:6px 8px}
+  #hud.min .stat{padding:3px 9px;min-width:0}
+  #hud.min .stat b{font-size:18px}
+  #hud.min .stat small{display:none}
+  #hud.open{max-height:100vh;overflow-y:auto;background:linear-gradient(rgba(6,14,26,.55),rgba(6,14,26,.55))}
+  #hud:not(.min) #toggle{order:99}
+  @media (max-width:820px),(max-height:520px){ #hint{display:none} .stat{padding:4px 9px;min-width:0} .stat b{font-size:18px} #vol{width:110px} }
+  /* ---- home screen */
+  .off{display:none!important}
+  #home{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;overflow:auto;
+    background:radial-gradient(ellipse at 50% 30%,rgba(24,74,44,.92),rgba(6,16,12,.97));transition:opacity .3s}
+  #home.hidden{opacity:0;pointer-events:none}
+  #home .box{width:min(92vw,460px);padding:22px 0;text-align:center}
+  #home h1{margin:0;font-size:clamp(30px,8vw,46px);letter-spacing:.04em;line-height:1.05}
+  #home h1 em{font-style:normal;color:#ff6b5b}
+  #home .tag{margin:6px 0 22px;font-size:14px;opacity:.75}
+  #home .ball{display:inline-block;width:46px;height:46px;border-radius:50%;margin-bottom:8px;
+    background:radial-gradient(circle at 35% 30%,#ff7a6a,#b3201a 60%,#7c130f);box-shadow:0 6px 18px rgba(0,0,0,.5);position:relative}
+  #home .ball:after{content:"";position:absolute;left:8%;right:8%;top:48%;height:2px;background:rgba(255,255,255,.75);border-radius:2px}
+  #home .menu{display:flex;flex-direction:column;gap:10px}
+  #home button{cursor:pointer;border:0;border-radius:14px;padding:15px 18px;font:700 17px inherit;font-family:inherit;color:#fff;
+    background:#2f4a63;box-shadow:0 3px 10px rgba(0,0,0,.35);text-align:left;display:flex;align-items:center;gap:12px}
+  #home button:hover,#home button:focus-visible{background:#3c5f7e;outline:none}
+  #home button small{display:block;font-weight:500;font-size:12px;opacity:.78;margin-top:2px}
+  #home button .ic{font-size:24px;width:30px;text-align:center}
+  #home button.primary{background:#1e9d54}#home button.primary:hover{background:#27b863}
+  #home button.back{margin-top:16px;justify-content:center;background:#566573}
+  #home .pg.hidden,#home button.hidden{display:none}
+  #home .card{background:rgba(10,22,40,.7);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px 16px;text-align:left;font-size:14px;line-height:1.5}
+  #home .card h2{margin:0 0 6px;font-size:13px;letter-spacing:.12em;color:#ffd84a}
+  #home .card+.card{margin-top:10px}
+  #home .card ul{margin:4px 0 0;padding-left:18px}
+  #home table{border-collapse:collapse;width:100%;font-size:13px}
+  #home td{padding:4px 6px;border-top:1px solid rgba(255,255,255,.1)}
+  #home td:first-child{white-space:nowrap}
+  #home kbd{background:#0d2238;border:1px solid #3a5878;border-radius:5px;padding:1px 7px;font:600 12px Arial,sans-serif;margin-right:2px;white-space:nowrap}
+  #home label{display:block;text-align:left;font-size:12px;letter-spacing:.1em;opacity:.8;margin:12px 0 4px}
+  #home select{width:100%;background:#0d2238;color:#fff;border:1px solid #3a5878;border-radius:10px;padding:11px;font:600 15px Arial,sans-serif}
+  .homeic{pointer-events:auto;cursor:pointer;border:0;border-radius:10px;padding:9px 11px;line-height:0;color:#fff;background:#34495e;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .homeic:hover{background:#46627d}
+  #hud .homeic{align-self:center;padding:9px 11px}
+  #hud.min .homeic{padding:7px 9px}
+  #home.hidden #homeFloat{display:none}
+  #homeFloat{position:fixed;top:10px;left:10px;z-index:7;background:rgba(52,73,94,.9)}
+  #panel button.alt{background:#566573;margin-left:6px}
+  #tip{position:fixed;left:50%;bottom:66px;transform:translateX(-50%);width:min(92vw,540px);box-sizing:border-box;z-index:3;
+    background:rgba(8,20,36,.86);border:1px solid rgba(255,216,74,.55);border-radius:12px;padding:8px 12px;font-size:13px;line-height:1.4;cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #tip b{color:#ffd84a;display:block;font-size:12px;letter-spacing:.06em;margin-bottom:2px}
+  #tip .x{position:absolute;right:10px;top:6px;opacity:.6;font-size:11px}
+  #tip.min{width:auto;padding:6px 12px}#tip.min #tipBody,#tip.min .x{display:none}#tip.min b{margin:0}
+  #modeTag{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(8,20,36,.8);border:1px solid rgba(255,255,255,.25);
+    border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <button id="homeBtn" type="button" class="homeic" title="Home (Esc)" aria-label="Home"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-6h4v6"/></svg></button>
+  <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+  <div class="stat"><span>BALLS</span><b id="balls">0</b></div>
+  <div class="stat wide"><span>NEXT BALL</span><b id="next">&mdash;</b><small id="nextDetail">&nbsp;</small></div>
+  <button id="toggle" type="button" aria-expanded="false" aria-label="Show or hide the scoreboard menu">&#9776;</button>
+  <div id="more">
+  <div class="stat wide"><span>LEVEL</span><b id="lvl">1</b><small id="lvlSub">&nbsp;</small></div>
+  <div class="stat"><span>START AT</span><select id="lvlSel"></select></div>
+  <div class="stat wide"><span>LAST SHOT</span><b id="last">&mdash;</b><small id="lastDetail">&nbsp;</small></div>
+  <div class="stat wide"><span>BEST SHOT</span><b id="best">&mdash;</b><small id="bestDetail">&nbsp;</small></div>
+  <div class="stat"><span>HIGH SCORE</span><b id="hi">0</b></div>
+  <button id="scoresBtn" type="button">Scores</button>
+  <button id="mapBtn" type="button">Map</button>
+  <div class="stat snd"><button id="mute" type="button" title="Mute / unmute (M)" aria-label="Mute or unmute sound"><svg id="spk" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg></button><input id="vol" type="range" min="0" max="100" step="1" value="80" aria-label="Volume" title="Volume (Up / Down keys)"><span id="volTxt">80%</span></div>
+  <button id="menuBtn" type="button">Menu</button>
+  <button id="restart" type="button">Restart</button>
+  </div>
+</div>
+<div id="modeTag" class="off"></div>
+<div id="tip" class="off" title="Tap to hide / show"><span class="x">tap to hide</span><b id="tipHead"></b><span id="tipBody"></span></div>
+<div id="home">
+ <button id="homeFloat" type="button" class="homeic off" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-6h4v6"/></svg></button>
+ <div class="box">
+  <div id="hmMain" class="pg">
+   <span class="ball"></span>
+   <h1>STUMPS <em>&amp;</em> SIXES</h1>
+   <div class="tag">2D cricket batting &middot; real ball physics &middot; time your shot</div>
+   <div class="menu">
+    <button id="hmResume" type="button" class="primary hidden"><span class="ic">&#9654;</span><span>Resume<small>carry on where you paused</small></span></button>
+    <button id="hmPlay" type="button" class="primary"><span class="ic">&#127951;</span><span>Play Match<small>5 levels &middot; out only if bowled &middot; high scores</small></span></button>
+    <button id="bPrac" type="button"><span class="ic">&#127919;</span><span>Practice<small>no wickets &middot; pick the delivery you want to face</small></span></button>
+    <button id="hmDemo" type="button"><span class="ic">&#128065;</span><span>Watch Demo<small>the computer bats so you can see how it works</small></span></button>
+    <button id="bHow" type="button"><span class="ic">&#128214;</span><span>How to Play<small>scoring, boundaries, levels, dismissal</small></span></button>
+    <button id="bCtl" type="button"><span class="ic">&#9000;</span><span>Controls<small>keyboard, mouse and touch</small></span></button>
+    <button id="hmScores" type="button"><span class="ic">&#127942;</span><span>High Scores<small>your best innings</small></span></button>
+   </div>
+  </div>
+
+  <div id="hmHow" class="pg hidden">
+   <h1 style="font-size:28px;margin-bottom:12px">HOW TO PLAY</h1>
+   <div class="card"><h2>THE IDEA</h2>A bowler runs in and bowls a red ball every 5 seconds. You are the batsman: press swing so the bat meets the ball at exactly the right instant. The better your timing, the better the shot.</div>
+   <div class="card"><h2>SCORING BY TIMING</h2><table>
+    <tr><td><b>PERFECT</b></td><td>within &plusmn;20 ms of the sweet spot &mdash; best power and placement</td></tr>
+    <tr><td><b>Good</b></td><td>within &plusmn;50 ms</td></tr>
+    <tr><td><b>Average</b></td><td>within &plusmn;100 ms</td></tr>
+    <tr><td><b>Poor / Edge</b></td><td>mistimed or off the edge</td></tr>
+    <tr><td><b>Miss</b></td><td>no contact</td></tr></table>
+    <div style="margin-top:6px;opacity:.85">After each shot you see the label, your timing in ms, the ball&rsquo;s exit speed and the runs.</div></div>
+   <div class="card"><h2>RUNS &amp; BOUNDARIES</h2><ul>
+    <li><b>FOUR</b>: the ball bounces, then crosses the rope.</li>
+    <li><b>SIX</b>: the ball crosses the rope without touching the ground first.</li>
+    <li>This applies to any shot &mdash; even an edge that crosses the rope.</li>
+    <li>A ball that stops short scores 0&ndash;3 depending on how well you hit it.</li></ul></div>
+   <div class="card"><h2>HOW YOU GET OUT</h2>Only one way: <b>BOWLED</b> &mdash; you miss the ball <i>and</i> it hits the stumps. Edges, mishits and lofted shots are never out.</div>
+   <div class="card"><h2>DELIVERIES &amp; LEVELS</h2>Expect fast balls, slower balls, yorkers, bouncers, swing (in/out) and spin (off-break, leg-break, googly, doosra). Five levels &mdash; Club Nets, County Cup, Test Match, Day-Night Final and Storm Chasers &mdash; each faster than the last. Reach each level&rsquo;s run target to move up.</div>
+   <button id="hmHowBack" type="button" class="back">&larr; Back</button>
+  </div>
+
+  <div id="hmCtl" class="pg hidden">
+   <h1 style="font-size:28px;margin-bottom:12px">CONTROLS</h1>
+   <div class="card"><h2>SWING</h2><table>
+    <tr><td><kbd>Space</kbd></td><td>swing the bat</td></tr>
+    <tr><td>Mouse click</td><td>swing (click anywhere on the field)</td></tr>
+    <tr><td>Touch</td><td>tap anywhere on the screen to swing</td></tr></table></div>
+   <div class="card"><h2>GAME</h2><table>
+    <tr><td><kbd>Esc</kbd></td><td>pause &amp; open this menu (also resumes)</td></tr>
+    <tr><td><kbd>R</kbd></td><td>restart the innings</td></tr>
+    <tr><td><kbd>H</kbd></td><td>show / hide high scores</td></tr>
+    <tr><td><kbd>M</kbd></td><td>mute / unmute</td></tr>
+    <tr><td><kbd>&uarr;</kbd> <kbd>&darr;</kbd></td><td>volume up / down</td></tr></table></div>
+   <div class="card"><h2>ON SCREEN</h2><ul>
+    <li><b>&#9776;</b> (top right) opens the scoreboard: level, last / best shot, high score, sound, Menu and Restart.</li>
+    <li>Speaker button + slider: sound on/off and volume.</li>
+    <li>Map: shows where your last 6 deliveries pitched.</li></ul></div>
+   <button id="hmCtlBack" type="button" class="back">&larr; Back</button>
+  </div>
+
+  <div id="hmPrac" class="pg hidden">
+   <h1 style="font-size:28px;margin-bottom:4px">PRACTICE</h1>
+   <div class="tag" style="margin-bottom:6px">You can&rsquo;t get out here &mdash; keep facing the delivery you want.</div>
+   <label for="pracType">DELIVERY</label><select id="pracType"></select>
+   <div id="pracTip" class="card" style="margin-top:12px"></div>
+   <label for="pracLvl">LEVEL (PACE &amp; CONDITIONS)</label><select id="pracLvl"></select>
+   <div class="menu" style="margin-top:18px">
+    <button id="hmPracGo" type="button" class="primary" style="justify-content:center">Start practice</button>
+   </div>
+   <button id="hmPracBack" type="button" class="back">&larr; Back</button>
+  </div>
+ </div>
+</div>
+<div id="hint">SPACE / click / tap to swing &middot; M mute &middot; &uarr;/&darr; volume &middot; H high scores &middot; you are only out if you miss <u>and</u> the ball hits the stumps</div>
+
+<div id="over" class="hidden">
+  <div id="panel">
+    <h1>BOWLED!</h1><div id="oNew" class="newhs"></div>
+    <div class="lbl">FINAL SCORE</div><div class="big" id="oScore">0</div>
+    <div class="lbl">BALLS FACED</div><div class="val" id="oBalls">0</div>
+    <div class="lbl">LEVEL REACHED</div><div class="val" id="oLevel">1</div>
+    <div class="lbl">BEST SHOT</div><div class="val" id="oBest">&mdash;</div>
+    <div class="lbl">TOP SCORES</div><div id="oList"></div>
+    <button id="restart2" type="button">Restart</button> <button id="overHome" type="button" class="alt">Home</button>
+  </div>
+</div>
+
+<div id="hs" class="hidden">
+  <div id="panel2">
+    <h1>HIGH SCORES</h1>
+    <div id="hsList"></div>
+    <div style="margin-top:16px"><button id="hsClear" type="button" class="alt">Clear history</button><button id="hsHome" type="button" class="alt">Home</button><button id="hsClose" type="button">Close</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+ *  TUNABLE CONSTANTS  (all distances in metres, times in seconds,
+ *  speeds in m/s, angles in radians unless the name says otherwise)
+ *
+ *  World axes:  x  along the pitch, 0 = batsman's stumps, +x towards bowler
+ *               y  up (ground = 0)
+ *               z  sideways: +z is towards the camera ("off side"),
+ *                  -z is away from the camera ("leg side")
+ * ===================================================================== */
+const deg = d => d * Math.PI / 180;
+const CFG = {
+  // ---- simulation stepping
+  STEP: 1 / 240,            // fixed physics timestep
+  CCD_SUBSTEPS: 12,         // sub-steps per step for the swept bat/ball test
+  MAX_FRAME_DT: 0.1,        // clamp for long frames (tab switches)
+
+  // ---- environment and ball
+  GRAVITY: 9.81,
+  DRAG_K: 0.0070,           // quadratic air drag: a = -K*|v|*v   (1/m)  (~0.5*rho*Cd*A/m)
+  BALL_R: 0.0358,           // radius (m)
+  BALL_MASS: 0.1559,        // kg
+  E_PITCH: 0.56,            // coefficient of restitution on the pitch strip
+  MU_PITCH: 0.30,           // friction coefficient on the pitch strip
+  E_OUTFIELD: 0.42,         // restitution on the outfield grass
+  MU_OUTFIELD: 0.50,        // friction on the outfield grass
+  ROLL_DECEL: 2.6,          // rolling deceleration on grass (m/s^2)
+  BOUNCE_MIN_SPEED: 0.9,    // below this vertical speed the ball just rolls
+
+  // ---- ground geometry (laws of cricket)
+  PITCH_LEN: 20.12,
+  PITCH_HALF_W: 1.525,      // pitch strip is 3.05 m wide
+  PITCH_X0: -2.2, PITCH_X1: 22.3,
+  STUMP_H: 0.711,           // 28 inches
+  STUMP_W: 0.2286,          // outer width of the three stumps, 9 inches
+  STUMP_HALF_T: 0.0178,     // half stump diameter
+  BAIL_LEN: 0.11,
+  POPPING_CREASE: 1.22,
+  BOUNDARY: 65,             // rope radius from the batting crease
+
+  // ---- deliveries
+  SPEED_KMH: [100, 145],
+  LENGTHS: {                // where the ball pitches, metres from the batsman's stumps
+    yorker: [1.1, 1.9], full: [2.6, 4.6], good: [5.2, 7.8], short: [9.0, 11.5]
+  },
+  LENGTH_WEIGHTS: { yorker: 0.17, full: 0.20, good: 0.41, short: 0.22 },
+  LINE_ON_STUMPS: 0.66,     // probability the line is on the stumps
+  LINE_NEAR: 0.18,          // probability the line is just beside the stumps (hittable, misses stumps)
+                            // the remainder is wide of the stumps (cannot hit them)
+  SWING_ACC_MAX: 2.8,       // m/s^2 sideways acceleration from swing (before pitching)
+  SPIN_TURN_MAX: 2.0,       // m/s sideways kick off the pitch from spin
+  BACKSPIN_RAD_S: [14, 30], // seam rotation of a delivery (visual)
+
+  // ---- bat
+  BAT: {
+    PIVOT_X: 1.2, PIVOT_Y: 1.0,   // hands position at the moment of ideal contact (the hands travel around it, see handsAt)
+    R0: 0.28, R1: 0.96,           // blade extent measured from the hands along the bat
+    SWEET_R: 0.64,                // sweet spot distance from the hands
+    HALF_T: 0.04,                 // collision half thickness of the blade (side-on)
+    REACH_Z: 0.30,                // how far sideways the batsman can reach (feet and hands move)
+    EFF_MASS: 1.4,                // effective bat mass at the sweet spot (kg)
+    E: 0.55,                      // bat/ball coefficient of restitution at the sweet spot
+    MU: 0.20,                     // bat/ball friction coefficient
+    EDGE_SWEET: 0.30,             // contact further than this from the sweet spot is an edge/toe
+    EDGE_Z: 0.17,                 // contact this far from the middle of the bat is an edge
+    EDGE_Z_GAIN: 0.5              // how strongly an edge turns the bat face sideways
+  },
+  SWING: {
+    STANCE: deg(8), BACK: deg(-105), FWD: deg(115),   // bat angle from straight down (+ve = towards bowler)
+    T_BACK: 0.15, T_DOWN: 0.18, T_HOLD: 0.12, T_RECOVER: 0.30,   // down-swing ~0.18 s -> ~21 m/s at the sweet spot, ~25 m/s with the hands
+    IDEAL: deg(22)            // bat angle at which the sweet spot meets the ball perfectly
+  },
+
+  // ---- timing windows (ms either side of the sweet spot) and shot direction
+  PERFECT_MS: 20, GOOD_MS: 50, AVG_MS: 100,
+  YAW0: 0.12,               // face yaw at perfect timing (rad, slightly through the covers)
+  YAW_PER_MS: 0.0115,       // late = face opens to the off side / behind, early = closes to the leg side
+
+  // ---- game flow
+  NEXT_BALL_DELAY: 5.0,     // seconds between a dead ball and the next run-up
+  GAME_OVER_DELAY: 1.8,     // seconds after BOWLED before the panel shows
+
+  // ---- drawing
+  DEPTH: 0.18,              // screen pixels of vertical offset per metre of z, per px/m of scale
+  VIEW_L: -2.4, VIEW_R: 21.8, // default camera window along the pitch (m); the camera widens to follow hit balls
+  SLOWMO_SCALE: 0.3         // sim speed during slow-motion on great shots / the bowled moment
+};
+
+/* =====================================================================
+ *  LEVELS - every level has its own ball pace (km/h), length mix, line
+ *  accuracy, swing/spin, boundary size and stadium look.  A level is
+ *  cleared when the total score reaches `target`.  Pace always stays
+ *  inside the 100-145 km/h brief; it climbs level by level.
+ * ===================================================================== */
+const LEVELS = [
+  { name: 'Club Nets',       sub: 'Gentle pace, plenty of wides',          target: 25,       speed: [100, 116], weights: { yorker: .05, full: .22, good: .40, short: .33 }, onStumps: .50, near: .22, swing: 0.8, boundary: 58, mix: { medium: .38, fast: .12, slower: .12, yorker: .03, bouncer: .08, inswing: .05, outswing: .05, offbreak: .08, legbreak: .07, googly: .01, doosra: .01 }, theme: 'day' },
+  { name: 'County Cup',      sub: 'Seam and swing, straighter lines',      target: 60,       speed: [104, 126], weights: { yorker: .10, full: .22, good: .42, short: .26 }, onStumps: .60, near: .19, swing: 1.8, boundary: 62, mix: { medium: .28, fast: .16, slower: .10, yorker: .06, bouncer: .08, inswing: .07, outswing: .07, offbreak: .07, legbreak: .07, googly: .03, doosra: .01 }, theme: 'afternoon' },
+  { name: 'Test Match',      sub: 'Sunset session, disciplined lengths',   target: 110,      speed: [108, 134], weights: { yorker: .13, full: .20, good: .46, short: .21 }, onStumps: .66, near: .17, swing: 2.4, boundary: 65, mix: { medium: .20, fast: .18, slower: .10, yorker: .09, bouncer: .09, inswing: .06, outswing: .06, offbreak: .07, legbreak: .07, googly: .06, doosra: .02 }, theme: 'sunset' },
+  { name: 'Day-Night Final', sub: 'Under the lights, genuine pace',        target: 175,      speed: [116, 141], weights: { yorker: .20, full: .20, good: .38, short: .22 }, onStumps: .72, near: .15, swing: 2.8, boundary: 68, mix: { medium: .14, fast: .22, slower: .10, yorker: .13, bouncer: .10, inswing: .06, outswing: .06, offbreak: .05, legbreak: .05, googly: .06, doosra: .03 }, theme: 'night' },
+  { name: 'Storm Chasers',   sub: 'Rain, thunder and 145 km/h yorkers',    target: Infinity, speed: [124, 145], weights: { yorker: .26, full: .20, good: .34, short: .20 }, onStumps: .78, near: .13, swing: 3.2, boundary: 70, mix: { medium: .08, fast: .26, slower: .10, yorker: .18, bouncer: .12, inswing: .06, outswing: .06, offbreak: .03, legbreak: .03, googly: .05, doosra: .03 }, theme: 'storm' }
+];
+const THEMES = {
+  day:       { skyA: '#4f9be8', skyB: '#cfe8ff', cloud: 'rgba(255,255,255,.75)', grassA: '#4aa843', grassB: '#2d7d2e', dark: 0 },
+  afternoon: { skyA: '#3f86dc', skyB: '#ffe9b8', cloud: 'rgba(255,255,255,.7)',  grassA: '#4aa13f', grassB: '#2b7a2c', dark: 0.05 },
+  sunset:    { skyA: '#32346e', skyB: '#ff9a5a', cloud: 'rgba(255,150,110,.55)', grassA: '#3f9440', grassB: '#26692a', dark: 0.16, sun: true },
+  night:     { skyA: '#040818', skyB: '#1b2e63', cloud: 'rgba(80,100,160,.22)',  grassA: '#2f8035', grassB: '#1b5a25', dark: 0.36, stars: true, moon: true, lights: true },
+  storm:     { skyA: '#12161f', skyB: '#4a5568', cloud: 'rgba(25,30,40,.85)',    grassA: '#2f7a38', grassB: '#1a4f26', dark: 0.32, lights: true, rain: true, lightning: true }
+};
+const HS_KEY = 'cricketHighScores', HS_MAX = 10;   // high-score history kept in this browser
+/* ---------------------------------------------------------------------
+ *  DELIVERY TYPES - each ball is one of these, labelled on screen.
+ *  Pace balls: Stock / Fast / Slower ball / Yorker / Bouncer / In- and Out-swinger.
+ *  Spin balls (slower, short run-up): Off-break, Leg-break, Googly, Doosra.
+ *  Googly = leg-spinner that turns the *other* way; Doosra = off-spinner that turns away.
+ *  turn > 0 kicks the ball to the off side (+z) off the pitch, turn < 0 to the leg side.
+ * ------------------------------------------------------------------- */
+const DTYPES = {
+  medium:   { label: 'Stock ball',  color: '#ffd84a', spd: 'mid' },
+  fast:     { label: 'Fast ball',   color: '#ff5a4a', spd: 'fast' },
+  slower:   { label: 'Slower ball', color: '#4aa8ff', spd: 'slow' },
+  yorker:   { label: 'Yorker',      color: '#ff9f45', spd: 'fast', len: 'yorker' },
+  bouncer:  { label: 'Bouncer',     color: '#ff3d7a', spd: 'fast', len: 'short' },
+  inswing:  { label: 'Inswinger',   color: '#3de0c4', spd: 'mid', swing: -1 },
+  outswing: { label: 'Outswinger',  color: '#3de0c4', spd: 'mid', swing: 1 },
+  offbreak: { label: 'Off-break',   color: '#b388ff', spd: 'spin', turn: -1 },
+  legbreak: { label: 'Leg-break',   color: '#d6a3ff', spd: 'spin', turn: 1 },
+  googly:   { label: 'Googly',      color: '#ff7ad9', spd: 'spin', turn: -1.35 },
+  doosra:   { label: 'Doosra',      color: '#9ad0ff', spd: 'spin', turn: 1.2 }
+};
+
+
+const BOWL = {
+  RUN_T: 1.7, ARM_T: 0.55, START_X: 27.2, REL_X: 19.45, FOLLOW_X: 18.3,
+  ARM_LEN: 0.74, SHOULDER_H: 1.5, REL_PSI: deg(-195), HOME_X: 29
+};
+
+/* ===================================================================== */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const smooth = u => u * u * (3 - 2 * u);
+const $ = id => document.getElementById(id);
+
+const canvas = $('c');
+const ctx = canvas.getContext('2d');
+let W = 800, H = 600, DPR = 1;
+
+/* ---------------------------------------------------------------------
+ *  BALL PHYSICS
+ * ------------------------------------------------------------------- */
+function makeBall(x, y, z) {
+  return { x, y, z, vx: 0, vy: 0, vz: 0, bounces: 0, onGround: false,
+    spinRate: 0, seam: 0, swing: 0, spinTurn: 0,
+    hit: false, dead: false, sim: true, age: 0, trail: [], info: null, deadAt: 0 };
+}
+function onPitchStrip(x, z) {
+  return Math.abs(z) <= CFG.PITCH_HALF_W && x >= CFG.PITCH_X0 && x <= CFG.PITCH_X1;
+}
+
+/** Advance a ball by dt: gravity, quadratic drag, swing, bounce (restitution + friction), rolling. */
+function stepBall(b, dt) {
+  const sp = Math.hypot(b.vx, b.vy, b.vz);
+  const k = CFG.DRAG_K * sp;
+  let ax = -k * b.vx, ay = -CFG.GRAVITY - k * b.vy, az = -k * b.vz;
+  if (b.bounces === 0 && !b.hit) az += b.swing;          // swing acts only in the air before pitching
+  if (b.onGround) {                                       // rolling: no gravity pull, constant deceleration
+    ay = 0; b.vy = 0;
+    const vh = Math.hypot(b.vx, b.vz);
+    if (vh > 0) {
+      const nvh = Math.max(0, vh - CFG.ROLL_DECEL * dt);
+      const f = nvh / vh; b.vx *= f; b.vz *= f;
+    }
+  }
+  b.vx += ax * dt; b.vy += ay * dt; b.vz += az * dt;
+  b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+
+  const R = CFG.BALL_R;
+  if (b.y <= R) {
+    b.y = R; b.touched = true;
+    if (b.vy < -CFG.BOUNCE_MIN_SPEED) {                   // bounce
+      const onP = onPitchStrip(b.x, b.z);
+      const e = onP ? CFG.E_PITCH : CFG.E_OUTFIELD;
+      const mu = onP ? CFG.MU_PITCH : CFG.MU_OUTFIELD;
+      const vin = -b.vy; b.lastVin = vin; b.lastOnP = onP;
+      b.vy = e * vin;
+      const vh = Math.hypot(b.vx, b.vz);                  // Coulomb friction removes horizontal speed
+      if (vh > 1e-6) {
+        const nvh = Math.max(0, vh - mu * (1 + e) * vin);
+        const f = nvh / vh; b.vx *= f; b.vz *= f;
+      }
+      if (b.bounces === 0 && !b.hit && b.spinTurn) b.vz += b.spinTurn;   // spin grips and turns the ball
+      b.bounces++;
+      b.onGround = false;
+    } else if (b.vy < 0.5) { b.vy = 0; b.onGround = true; }
+    else b.onGround = false;
+  } else b.onGround = false;
+
+  // seam rotation: free spin in the air, rolling spin on the ground
+  if (b.onGround) b.spinRate = clamp(b.vx / R, -55, 55);
+  b.seam += b.spinRate * dt;
+}
+
+/* ---------------------------------------------------------------------
+ *  DELIVERY PLANNING AND AIMING
+ *  A delivery is described by speed, where it pitches, and the line it
+ *  would take at the stumps.  The launch angles are solved by shooting
+ *  with the same physics that moves the live ball (bounce included).
+ * ------------------------------------------------------------------- */
+function pickLength() {
+  let r = Math.random(), acc = 0;
+  for (const k in CFG.LENGTH_WEIGHTS) { acc += CFG.LENGTH_WEIGHTS[k]; if (r < acc) return k; }
+  return 'good';
+}
+const LEN_NAMES = { yorker: 'yorker length', full: 'full', good: 'good length', short: 'short' };
+function planDelivery() {
+  const lv = LEVELS[G.level || 0], lo = lv.speed[0], hi = lv.speed[1], R = hi - lo;
+  const type = (mode === 'practice' && DTYPES[practiceType]) ? practiceType : pickWeighted(lv.mix), D = DTYPES[type];
+  let kmh;                                               // pace depends on the delivery type and the level's pace band
+  if (D.spd === 'fast') kmh = rand(lo + 0.65 * R, hi);
+  else if (D.spd === 'slow') kmh = rand(lo * 0.78, lo * 0.9);
+  else if (D.spd === 'spin') kmh = rand(lo * 0.70, lo * 0.84);
+  else kmh = rand(lo + 0.25 * R, lo + 0.7 * R);
+  const speed = kmh / 3.6;
+  const kind = D.len || (D.turn ? pickWeighted({ full: .35, good: .5, short: .15 }) : pickLength());
+  const [a, b] = CFG.LENGTHS[kind];
+  const r = Math.random(), sgn = Math.random() < 0.5 ? -1 : 1;
+  let zT, lineName;
+  if (r < CFG.LINE_ON_STUMPS) { zT = rand(-0.10, 0.10); lineName = 'stumps'; }
+  else if (r < CFG.LINE_ON_STUMPS + CFG.LINE_NEAR) { zT = sgn * rand(0.17, 0.42); lineName = 'near'; }
+  else { zT = sgn * rand(0.55, 1.3); lineName = 'wide'; }
+  let swing = 0, spinTurn = 0;
+  const sw = Math.max(1.0, CFG.SWING_ACC_MAX);
+  if (D.swing) swing = D.swing * rand(0.65, 1) * sw;                       // in/out swinger
+  else if (D.turn) { swing = rand(-0.6, 0.6); spinTurn = D.turn * rand(1.6, 3.4); }   // turn off the pitch
+  else if (Math.random() < 0.3) swing = rand(-0.5, 0.5) * sw;
+  const spinning = !!D.turn;
+  const spinRate = spinning ? Math.sign(D.turn) * rand(40, 55) : (D.spd === 'slow' ? rand(8, 16) : rand(CFG.BACKSPIN_RAD_S[0], CFG.BACKSPIN_RAD_S[1]));
+  return { type, label: D.label, color: D.color, kind, lenName: (spinning && kind === 'full') ? 'flighted' : LEN_NAMES[kind],
+    speed, xp: rand(a, b), zT, lineName, swing, spinTurn, spinRate, z0: rand(0.15, 0.55) };
+}
+function simulateFlight(p, rel, theta, beta) {
+  const b = makeBall(rel.x, rel.y, rel.z);
+  const cs = Math.cos(theta);
+  b.vx = -p.speed * cs * Math.cos(beta); b.vy = p.speed * Math.sin(theta); b.vz = p.speed * cs * Math.sin(beta);
+  b.swing = p.swing; b.spinTurn = p.spinTurn;
+  let xp = null, zS = null, yS = null;
+  for (let i = 0; i < 2400; i++) {
+    const px = b.x, py = b.y, pz = b.z;
+    stepBall(b, CFG.STEP);
+    if (xp === null && b.bounces >= 1) xp = b.x;
+    if (px > 0 && b.x <= 0) {
+      const f = px / (px - b.x);
+      zS = pz + (b.z - pz) * f; yS = py + (b.y - py) * f; break;
+    }
+    if (b.x < -3) break;
+  }
+  return { xp: xp === null ? -3 : xp, zS: zS === null ? 0 : zS, yS: yS === null ? 0 : yS, ok: zS !== null };
+}
+function solveDelivery(p, rel) {
+  let theta = -0.15, beta = 0;
+  for (let outer = 0; outer < 6; outer++) {
+    let lo = -0.6, hi = 0.12;
+    for (let i = 0; i < 26; i++) {                         // bisect elevation for the pitching point
+      const mid = (lo + hi) / 2;
+      const r = simulateFlight(p, rel, mid, beta);
+      if (r.xp > p.xp) lo = mid; else hi = mid;            // pitched too soon -> aim higher
+    }
+    theta = (lo + hi) / 2;
+    const r = simulateFlight(p, rel, theta, beta);
+    beta += (p.zT - r.zS) / Math.max(rel.x, 5);            // correct the line at the stumps
+  }
+  const fin = simulateFlight(p, rel, theta, beta);
+  const b = makeBall(rel.x, rel.y, rel.z);
+  const cs = Math.cos(theta);
+  b.vx = -p.speed * cs * Math.cos(beta); b.vy = p.speed * Math.sin(theta); b.vz = p.speed * cs * Math.sin(beta);
+  b.swing = p.swing; b.spinTurn = p.spinTurn; b.spinRate = p.spinRate;
+  return { ball: b, expect: fin };
+}
+
+/* ---- practice-mode coaching.  `press` = how far from your stumps (m) the ball usually is when a well-timed press works,
+ * measured by brute-force testing every swing time against every delivery type. */
+const GENERAL_TIP = 'The bat takes about 0.25 s to come through, so press BEFORE the ball reaches you: about 8 m out for pace, about 5 m for slow balls and spin. Within \u00b120 ms is PERFECT. Press too early and the ball goes towards leg side, too late and it goes off side or behind.';
+const TIPS = {
+  medium:   { press: 8,   tip: 'Straight and predictable. Press when it is about 8 m from your stumps, just before it pitches. A good place to learn your timing.' },
+  fast:     { press: 8.5, tip: 'Least time to react. Press as soon as it is about 8\u20139 m out; do not wait for it to pitch. Well-timed ones fly off the bat.' },
+  slower:   { press: 6,   tip: 'It arrives later than it looks. Wait: press at about 6 m, not 8 m. If you press at the usual moment you will be early and mistime it.' },
+  yorker:   { press: 8.5, tip: 'Pitches almost at your feet (about 1.5 m) and arrives only ~20 cm high, and it is usually on the stumps, so do not leave it. Only the bottom of the bat reaches it, so Perfect shots are rare: aim to dig it out and survive.' },
+  bouncer:  { press: 10,  tip: 'Pitches short and flies over the stumps (about 1.2 m high), so it cannot bowl you. The best answer is to leave it alone. Swinging at it is a gamble and rarely connects well.' },
+  inswing:  { press: 8,   tip: 'Curves in towards your legs in the air, then pitches about 7 m out. Press at about 8 m as for a stock ball. If it drifts down the leg side it will miss the stumps, so you can leave it.' },
+  outswing: { press: 8,   tip: 'Curves away towards the off side in the air. Press at about 8 m as for a stock ball. When it moves well wide of the stumps you can safely leave it.' },
+  offbreak: { press: 5,   tip: 'Slow through the air and turns in towards your legs after it pitches, so it arrives later than pace. Press later: about 5 m from the stumps.' },
+  legbreak: { press: 5,   tip: 'Slow through the air and turns away to the off side after it pitches. Press later, about 5 m from the stumps, and expect the ball to move away from the bat.' },
+  googly:   { press: 5,   tip: 'A leg-spinner that turns the other way: in towards your legs, sharply. It pitches fairly close (about 4 m) and grips, so press late, about 5 m out.' },
+  doosra:   { press: 5,   tip: 'An off-spinner that turns the wrong way, away from you to the off side. Press late, about 5 m from the stumps, and watch the line after it pitches.' }
+};
+
+/* ---------------------------------------------------------------------
+ *  BAT SWING
+ * ------------------------------------------------------------------- */
+function batAngle(t) {
+  const S = CFG.SWING;
+  if (t < S.T_BACK) { const u = t / S.T_BACK; return lerp(S.STANCE, S.BACK, 1 - (1 - u) * (1 - u)); }
+  t -= S.T_BACK;
+  if (t < S.T_DOWN) return lerp(S.BACK, S.FWD, smooth(t / S.T_DOWN));
+  t -= S.T_DOWN;
+  if (t < S.T_HOLD) return S.FWD;
+  t -= S.T_HOLD;
+  if (t < S.T_RECOVER) return lerp(S.FWD, S.STANCE, smooth(t / S.T_RECOVER));
+  return S.STANCE;
+}
+/* The hands are not a fixed hinge: they rise and move back in the back-lift, drive forward and down through the ball, then
+ * lift over the front shoulder in the follow-through.  Offsets are measured from PIVOT and are exactly zero at the ideal
+ * contact angle, so perfect timing still meets the ball at the same place.  The hands' velocity is added to the bat's. */
+const G_IDEAL = (CFG.SWING.IDEAL - CFG.SWING.BACK) / (CFG.SWING.FWD - CFG.SWING.BACK);
+function handsAt(t) {
+  const S = CFG.SWING, B = CFG.BAT;
+  const g = clamp((batAngle(t) - S.BACK) / (S.FWD - S.BACK), 0, 1);
+  const dx = 0.50 * (g - G_IDEAL);
+  const dy = g < G_IDEAL ? 0.16 * (1 - g / G_IDEAL) : 0.34 * Math.pow((g - G_IDEAL) / (1 - G_IDEAL), 1.4);
+  return { x: B.PIVOT_X + dx, y: B.PIVOT_Y + dy };
+}
+function handsVel(t) { const h = 1e-3, a = handsAt(t + h), b = handsAt(Math.max(0, t - h)); return { x: (a.x - b.x) / (2 * h), y: (a.y - b.y) / (2 * h) }; }
+const SWING_TOTAL = CFG.SWING.T_BACK + CFG.SWING.T_DOWN + CFG.SWING.T_HOLD + CFG.SWING.T_RECOVER;
+const CONTACT_END = CFG.SWING.T_BACK + CFG.SWING.T_DOWN + 0.03;
+function batOmega(t) { const h = 1e-4; return (batAngle(t + h) - batAngle(t - h)) / (2 * h); }
+const T_IDEAL = (() => {                                  // swing time when the bat reaches the ideal angle
+  let lo = CFG.SWING.T_BACK, hi = CFG.SWING.T_BACK + CFG.SWING.T_DOWN;
+  for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (batAngle(m) < CFG.SWING.IDEAL) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+})();
+
+/**
+ * Swept (continuous) bat-vs-ball test across one physics step.
+ * Contact = the ball (a sphere) really overlaps the blade (a capsule) while the
+ * bat is swinging.  Outgoing velocity comes from an impulse collision with the
+ * bat's effective mass, restitution and friction.
+ */
+function checkBatContact(b, prev, tsStart, dt) {
+  const B = CFG.BAT, N = CFG.CCD_SUBSTEPS;
+  for (let k = 1; k <= N; k++) {
+    const f = k / N, ts = tsStart + dt * f;
+    const bx = prev.x + (b.x - prev.x) * f, by = prev.y + (b.y - prev.y) * f, bz = prev.z + (b.z - prev.z) * f;
+    if (Math.abs(bz) > B.REACH_Z) continue;
+    const th = batAngle(ts), ax = Math.sin(th), ay = -Math.cos(th), hp = handsAt(ts);
+    const along = (bx - hp.x) * ax + (by - hp.y) * ay;
+    const Rc = clamp(along, B.R0, B.R1);
+    const cx = hp.x + ax * Rc, cy = hp.y + ay * Rc;
+    const dist = Math.hypot(bx - cx, by - cy);
+    if (dist > B.HALF_T + CFG.BALL_R) continue;
+
+    // timing: +ve = late, -ve = early (ms relative to the sweet-spot moment)
+    const offsetMs = (T_IDEAL - ts) * 1000;
+    const yaw = CFG.YAW0 + CFG.YAW_PER_MS * offsetMs;
+    // bat face normal: swing tangent, yawed about the vertical by timing, tilted sideways by off-centre hits
+    const n0x = Math.cos(th), n0y = Math.sin(th);
+    let nx = n0x * Math.cos(yaw), ny = n0y, nz = n0x * Math.sin(yaw);
+    nz += clamp(bz / 0.14, -1, 1) * B.EDGE_Z_GAIN;
+    let nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
+    if ((bx - cx) * n0x + (by - cy) * n0y < 0) { nx = -nx; ny = -ny; nz = -nz; }   // struck on the back of the blade
+
+    const om = batOmega(ts), spd = om * Rc;               // tangential speed of the contact point
+    const hv = handsVel(ts), vbx = spd * Math.cos(th) + hv.x, vby = spd * Math.sin(th) + hv.y;   // bat speed = rotation about the hands + hands' own motion
+    const rvx = b.vx - vbx, rvy = b.vy - vby, rvz = b.vz;
+    const vrel = rvx * nx + rvy * ny + rvz * nz;
+    if (vrel >= -0.01) continue;                          // not closing on the face: no collision
+
+    const sweet = Math.abs(Rc - B.SWEET_R);
+    const q = clamp(1 - (sweet / 0.38) * (sweet / 0.38), 0.15, 1);     // sweet-spot quality
+    const meff = B.EFF_MASS * (0.35 + 0.65 * q);
+    const e = B.E * (0.55 + 0.45 * q);
+    const j = -(1 + e) * vrel / (1 / CFG.BALL_MASS + 1 / meff);
+    const dv = j / CFG.BALL_MASS;
+    // tangential friction
+    let tx = rvx - vrel * nx, ty = rvy - vrel * ny, tz = rvz - vrel * nz;
+    const tl = Math.hypot(tx, ty, tz);
+    b.vx += dv * nx; b.vy += dv * ny; b.vz += dv * nz;
+    if (tl > 1e-6) {
+      const fr = Math.min(B.MU * dv, tl);
+      b.vx -= fr * tx / tl; b.vy -= fr * ty / tl; b.vz -= fr * tz / tl;
+    }
+    const exit = Math.hypot(b.vx, b.vy, b.vz);
+    b.hit = true; b.bounces = 0; b.onGround = false; b.touched = false;   // 'touched' = any ground contact since the bat
+    b.x = bx; b.y = by; b.z = bz;
+    b.x += b.vx * dt * (1 - f); b.y += b.vy * dt * (1 - f); b.z += b.vz * dt * (1 - f);
+    b.spinRate = clamp(b.spinRate * 0.3 + (rand(-1, 1)) * 25, -55, 55);
+    b.info = { offsetMs, Rc, bz, theta: th, exit, yaw, q,
+      edge: sweet > B.EDGE_SWEET || Math.abs(bz) > B.EDGE_Z,
+      dir: Math.atan2(b.vz, b.vx), t: G.time };
+    return true;
+  }
+  return false;
+}
+
+/* ---------------------------------------------------------------------
+ *  AUDIO - everything is synthesised with the Web Audio API (no files).
+ *  The context is created on the first key press / click (browser rule).
+ * ------------------------------------------------------------------- */
+const SFX = (() => {
+  let ac = null, master = null, nbuf = null, crowdG = null, rainG = null, muted = false, wantRain = false, vol = 0.8;
+  try { muted = localStorage.getItem('cricketMuted') === '1'; } catch (e) {}
+  try { const v = parseFloat(localStorage.getItem('cricketVolume')); if (isFinite(v)) vol = clamp(v, 0, 1); } catch (e) {}
+  const applyGain = () => { if (master) master.gain.value = muted ? 0 : vol; };
+  function init() {
+    if (ac) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      ac = new AC();
+      const comp = ac.createDynamicsCompressor();
+      master = ac.createGain(); applyGain();
+      master.connect(comp); comp.connect(ac.destination);
+      nbuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const cs = ac.createBufferSource(); cs.buffer = nbuf; cs.loop = true;       // stadium crowd murmur
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 650; bp.Q.value = 0.5;
+      crowdG = ac.createGain(); crowdG.gain.value = 0.035;
+      cs.connect(bp); bp.connect(crowdG); crowdG.connect(master); cs.start();
+      const rs = ac.createBufferSource(); rs.buffer = nbuf; rs.loop = true;       // rain bed
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
+      rainG = ac.createGain(); rainG.gain.value = wantRain ? 0.055 : 0;
+      rs.connect(hp); hp.connect(rainG); rainG.connect(master); rs.start();
+    } catch (e) { ac = null; }
+  }
+  function resume() { init(); try { if (ac && ac.state === 'suspended') ac.resume(); } catch (e) {} }
+  const ok = () => !!ac && !muted && ac.state === 'running';
+  function noise(t, dur, o) {                       // band/high/low-passed noise burst
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const f = ac.createBiquadFilter(); f.type = o.type || 'bandpass';
+    f.frequency.setValueAtTime(o.f0 || 1000, t);
+    if (o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t + dur);
+    f.Q.value = o.q || 1;
+    const g = ac.createGain(), a = Math.min(o.attack || 0.004, dur * 0.8);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.gain || 0.2, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(master);
+    s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+  }
+  function tone(t, dur, o) {                        // pitched blip with optional glide
+    const osc = ac.createOscillator(); osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f0, t);
+    if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1, t + dur);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.gain || 0.2, t + Math.min(o.attack || 0.005, dur * 0.8));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(master); osc.start(t); osc.stop(t + dur + 0.05);
+  }
+  return {
+    resume,
+    isMuted: () => muted,
+    toggleMute() {
+      muted = !muted;
+      try { localStorage.setItem('cricketMuted', muted ? '1' : '0'); } catch (e) {}
+      applyGain();
+      return muted;
+    },
+    getVolume: () => vol,
+    setVolume(v) {                                   // master volume 0..1, remembered between visits
+      vol = clamp(+v || 0, 0, 1);
+      try { localStorage.setItem('cricketVolume', String(vol)); } catch (e) {}
+      applyGain();
+      return vol;
+    },
+    step(v) { if (!ok()) return; const t = ac.currentTime; noise(t, 0.07, { type: 'lowpass', f0: 500, gain: 0.16 * v }); tone(t, 0.09, { f0: 95, f1: 48, gain: 0.16 * v }); },
+    start() { if (!ok()) return; tone(ac.currentTime, 0.2, { f0: 523, gain: 0.06, type: 'triangle' }); },
+    release() { if (!ok()) return; const t = ac.currentTime; noise(t, 0.6, { f0: 500, f1: 2300, q: 1.2, gain: 0.1, attack: 0.4 }); tone(t, 0.05, { f0: 300, f1: 200, gain: 0.08 }); },
+    bounce(vin) { if (!ok()) return; const t = ac.currentTime, v = clamp(vin / 25, 0.15, 1); tone(t, 0.1, { f0: 150, f1: 55, gain: 0.4 * v }); noise(t, 0.05, { f0: 1500, q: 1, gain: 0.25 * v }); },
+    swing() { if (!ok()) return; noise(ac.currentTime + 0.11, 0.22, { f0: 350, f1: 1900, q: 0.9, gain: 0.16, attack: 0.1 }); },
+    hit(q, power, edge) {
+      if (!ok()) return; const t = ac.currentTime, v = 0.35 + 0.65 * power;
+      if (edge) { noise(t, 0.05, { f0: 2600, q: 2, gain: 0.35 * v }); tone(t, 0.06, { f0: 900, f1: 500, gain: 0.18 * v, type: 'square' }); }
+      else {
+        noise(t, 0.045, { type: 'highpass', f0: 1800, gain: 0.55 * v });
+        tone(t, 0.14, { f0: 190 + q * 60, f1: 70, gain: 0.5 * v, type: 'triangle' });
+        tone(t, 0.05, { f0: 1300, f1: 700, gain: 0.15 * v * q, type: 'square' });
+      }
+    },
+    stumps() {
+      if (!ok()) return; const t = ac.currentTime;
+      for (let i = 0; i < 5; i++) {
+        const d = i * 0.045 + Math.random() * 0.02;
+        noise(t + d, 0.09, { f0: 2000 + Math.random() * 3000, q: 3, gain: 0.3 });
+        tone(t + d, 0.12, { f0: 500 + Math.random() * 500, f1: 250, type: 'triangle', gain: 0.22 });
+      }
+      tone(t + 0.02, 0.5, { f0: 2400, f1: 2200, gain: 0.06 }); tone(t + 0.1, 0.4, { f0: 3100, f1: 2900, gain: 0.05 });
+    },
+    cheer(l) {
+      if (!ok()) return; const t = ac.currentTime;
+      noise(t, 1.2 + 2.2 * l, { f0: 900, f1: 1600, q: 0.7, gain: 0.05 + 0.17 * l, attack: 0.35 });
+      noise(t, 1.0 + 2 * l, { f0: 2200, f1: 3000, q: 1, gain: 0.02 + 0.06 * l, attack: 0.4 });
+      if (l > 0.7) for (let i = 0; i < 7; i++) noise(t + 0.3 + i * 0.11, 0.05, { type: 'highpass', f0: 2500, gain: 0.1 });
+    },
+    groan(l) {
+      if (!ok()) return; const t = ac.currentTime;
+      noise(t, 1.0, { f0: 800, f1: 300, q: 1.2, gain: 0.06 + 0.1 * l, attack: 0.15 });
+      tone(t, 0.9, { f0: 260, f1: 130, type: 'sawtooth', gain: 0.02 + 0.03 * l, attack: 0.15 });
+    },
+    tick(n) { if (!ok()) return; tone(ac.currentTime, 0.08, { f0: n <= 1 ? 1320 : 880, gain: 0.12 }); },
+    levelUp() {
+      if (!ok()) return; const t = ac.currentTime;
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { tone(t + i * 0.11, 0.35, { f0: f, gain: 0.14, type: 'triangle' }); tone(t + i * 0.11, 0.35, { f0: f * 2, gain: 0.04 }); });
+      tone(t + 0.5, 0.8, { f0: 1046.5, gain: 0.1, type: 'triangle' });
+    },
+    thunder(d) { if (!ok()) return; noise(ac.currentTime + (d || 0), 2.2, { type: 'lowpass', f0: 220, f1: 70, gain: 0.5, attack: 0.15 }); },
+    pop() {
+      if (!ok()) return; const t = ac.currentTime;
+      noise(t, 0.12, { type: 'highpass', f0: 1500, gain: 0.35 }); tone(t, 0.25, { f0: 900, f1: 200, gain: 0.18, type: 'triangle' });
+      for (let i = 0; i < 5; i++) noise(t + 0.15 + i * 0.05 + Math.random() * 0.04, 0.04, { type: 'highpass', f0: 3000, gain: 0.08 });
+    },
+    crowd(ex) { if (crowdG && ac) crowdG.gain.setTargetAtTime(0.035 + 0.11 * ex, ac.currentTime, 0.15); },
+    rain(on) { wantRain = on; if (rainG && ac) rainG.gain.setTargetAtTime(on ? 0.055 : 0, ac.currentTime, 0.4); }
+  };
+})();
+
+/* ---------------------------------------------------------------------
+ *  HIGH-SCORE HISTORY  (localStorage, wrapped so the game works without)
+ * ------------------------------------------------------------------- */
+const HS = {
+  load() { try { const a = JSON.parse(localStorage.getItem(HS_KEY) || '[]'); return Array.isArray(a) ? a.filter(r => r && typeof r === 'object' && isFinite(r.score)) : []; } catch (e) { return this.mem || []; } },
+  save(list) { this.mem = list; try { localStorage.setItem(HS_KEY, JSON.stringify(list)); } catch (e) {} },
+  top() { const l = this.load(); return l.length ? l[0].score : 0; },
+  /** Record an innings; returns its rank (1-based) in the table or 0 if it did not make it. */
+  add(rec) {
+    const list = this.load(); list.push(rec);
+    list.sort((a, b) => b.score - a.score || b.level - a.level || a.balls - b.balls);
+    const rank = list.indexOf(rec) + 1;
+    this.save(list.slice(0, HS_MAX));
+    return rank <= HS_MAX ? rank : 0;
+  },
+  clear() { this.save([]); },
+  html(n, hi) {
+    const list = this.load().slice(0, n);
+    if (!list.length) return '<div class="empty">No scores yet. Go and get some runs!</div>';
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // stored data is untrusted text
+    let h = '<table><tr><th>#</th><th>Score</th><th>Level</th><th>Balls</th><th>Best shot</th><th>Date</th></tr>';
+    list.forEach((r, i) => {
+      h += '<tr' + (hi === i + 1 ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td><b>' + (+r.score || 0) + '</b></td><td>' + ((+r.level || 0) + 1) + '</td><td>' + (+r.balls || 0) +
+        '</td><td>' + esc(r.best || '\u2014') + '</td><td>' + esc(r.date || '') + '</td></tr>';
+    });
+    return h + '</table>';
+  }
+};
+
+/* ---------------------------------------------------------------------
+ *  VISUAL EFFECTS: particles, rings, screen shake, flash, slow-motion,
+ *  fireworks/confetti, rain and lightning.
+ * ------------------------------------------------------------------- */
+const FX = {
+  parts: [], sp: [], rings: [], rain: [], queue: [],
+  shake: 0, flash: 0, flashCol: '255,255,255', slow: 0, excite: 0, nextBolt: 8,
+  reset() { this.parts.length = 0; this.sp.length = 0; this.rings.length = 0; this.queue.length = 0; this.shake = 0; this.flash = 0; this.slow = 0; this.excite = 0; this.nextBolt = 6 + Math.random() * 6; },
+  world(x, y, z, vx, vy, vz, life, size, col, g, add) {
+    if (this.parts.length > 700) this.parts.shift();
+    this.parts.push({ x, y, z, vx, vy, vz, life, max: life, size, col, g, add: !!add });
+  },
+  screen(x, y, vx, vy, life, size, col, g, shape, add) {
+    if (this.sp.length > 600) this.sp.shift();
+    this.sp.push({ x, y, vx, vy, life, max: life, size, col, g, shape: shape || 'c', add: !!add, rot: Math.random() * TAU, vr: rand(-8, 8) });
+  },
+  later(d, fn) { this.queue.push({ d, fn }); },
+  step(dt) {
+    const P = this.parts;
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i]; p.life -= dt;
+      if (p.life <= 0) { P[i] = P[P.length - 1]; P.pop(); continue; }
+      p.vy -= p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      if (p.y < 0.02) { p.y = 0.02; p.vy *= -0.3; p.vx *= 0.6; p.vz *= 0.6; }
+    }
+    const S = this.sp;
+    for (let i = S.length - 1; i >= 0; i--) {
+      const p = S[i]; p.life -= dt;
+      if (p.life <= 0) { S[i] = S[S.length - 1]; S.pop(); continue; }
+      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    }
+    const R = this.rings;
+    for (let i = R.length - 1; i >= 0; i--) { R[i].age += dt; if (R[i].age >= R[i].max) { R[i] = R[R.length - 1]; R.pop(); } }
+    for (let i = this.queue.length - 1; i >= 0; i--) { const q = this.queue[i]; q.d -= dt; if (q.d <= 0) { this.queue.splice(i, 1); q.fn(); } }
+    this.shake *= Math.exp(-dt * 8); this.flash *= Math.exp(-dt * 5); this.excite *= Math.exp(-dt * 0.45);
+    const T = curTheme();
+    if (T.rain) {
+      if (!this.rain.length) for (let i = 0; i < Math.round(W / 5); i++) this.rain.push({ x: rand(0, W * 1.2), y: rand(0, H), v: rand(700, 1100), l: rand(10, 22) });
+      for (const r of this.rain) { r.y += r.v * dt; r.x -= r.v * 0.18 * dt; if (r.y > H) { r.y = -r.l; r.x = rand(0, W * 1.2); } }
+    } else if (this.rain.length) this.rain.length = 0;
+    if (T.lightning) {
+      this.nextBolt -= dt;
+      if (this.nextBolt <= 0) { this.nextBolt = 7 + Math.random() * 9; this.flash = 0.7; this.flashCol = '200,215,255'; SFX.thunder(0.25 + Math.random() * 0.5); }
+    }
+  },
+  draw() {
+    for (let pass = 0; pass < 2; pass++) {
+      if (pass === 1) ctx.globalCompositeOperation = 'lighter';
+      for (const p of this.parts) {
+        if (p.add !== (pass === 1)) continue;
+        ctx.globalAlpha = clamp(p.life / p.max, 0, 1); ctx.fillStyle = p.col;
+        ctx.beginPath(); ctx.arc(SX(p.x), SY(p.y, p.z), Math.max(1, p.size * sc), 0, TAU); ctx.fill();
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    for (const r of this.rings) {
+      const k = r.age / r.max; ctx.strokeStyle = r.col; ctx.globalAlpha = (1 - k) * 0.9; ctx.lineWidth = Math.max(1.5, 4 * (1 - k));
+      ctx.beginPath(); ctx.arc(SX(r.x), SY(r.y, r.z), (0.1 + k * 1.1) * sc, 0, TAU); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    for (const p of this.sp) {
+      const a = p.shape === 'rect' ? Math.min(1, p.life * 1.5) : clamp(p.life / p.max, 0, 1);
+      ctx.globalAlpha = a; ctx.fillStyle = p.col;
+      ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
+      if (p.shape === 'rect') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillRect(-3.5, -2, 7, 4); ctx.restore(); }
+      else if (p.shape === 'flash') { ctx.fillRect(p.x - 2, p.y - 2, 4, 4); ctx.fillRect(p.x - 6, p.y - 0.5, 12, 1); ctx.fillRect(p.x - 0.5, p.y - 6, 1, 12); }
+      else { ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+};
+
+function fxDust(x, z, pw) {
+  const n = 5 + Math.round(pw * 9);
+  for (let i = 0; i < n; i++) FX.world(x, 0.04, z, (Math.random() - 0.4) * 2.2 * pw, rand(0.4, 1.8) * pw, (Math.random() - 0.5) * 1.6, rand(0.35, 0.8), rand(0.025, 0.05), '#d6be8c', 4);
+}
+function fxGrass(x, z, pw) {
+  const n = 4 + Math.round(pw * 8);
+  for (let i = 0; i < n; i++) FX.world(x, 0.04, z, (Math.random() - 0.4) * 2.5 * pw, rand(0.8, 2.6) * pw, (Math.random() - 0.5) * 2, rand(0.4, 0.9), rand(0.02, 0.04), Math.random() < 0.5 ? '#5fbf4a' : '#3c8f32', 9);
+}
+function fxSparks(b, col, n, speed) {
+  const sp = Math.hypot(b.vx, b.vy, b.vz) || 1;
+  for (let i = 0; i < n; i++) {
+    const s = rand(0.3, 1) * speed;
+    FX.world(b.x, b.y, b.z, b.vx / sp * s * 0.5 + rand(-1, 1) * s * 0.6, b.vy / sp * s * 0.5 + rand(-0.2, 1) * s * 0.6, rand(-1, 1) * s * 0.4,
+      rand(0.25, 0.7), rand(0.02, 0.045), col, 9.8, true);
+  }
+}
+function fxHit(b, c, power) {
+  const col = c.cls === 'perfect' ? '#ffe27a' : c.cls === 'good' ? '#9dffb0' : c.cls === 'edge' ? '#ffb347' : '#ffffff';
+  fxSparks(b, col, 10 + Math.round(power * 26), 3 + power * 7);
+  FX.rings.push({ x: b.x, y: b.y, z: b.z, age: 0, max: 0.3, col });
+  FX.shake = Math.max(FX.shake, (c.cls === 'perfect' ? 10 : c.cls === 'good' ? 6 : 3) * power);
+  if (c.cls === 'perfect') { FX.flash = Math.max(FX.flash, 0.35); FX.flashCol = '255,226,122'; FX.slow = 0.55; }
+  FX.excite = Math.max(FX.excite, c.cls === 'perfect' ? 0.5 : 0.25);
+}
+function fxFirework(sx, sy) {
+  const hue = Math.floor(rand(0, 360)), n = 46;
+  for (let i = 0; i < n; i++) {
+    const a = TAU * i / n + rand(-0.05, 0.05), s = rand(80, 250);
+    FX.screen(sx, sy, Math.cos(a) * s, Math.sin(a) * s, rand(0.8, 1.4), rand(1.6, 3), 'hsl(' + (hue + rand(-20, 20)) + ',100%,62%)', 140, 'c', true);
+  }
+  SFX.pop();
+}
+function fxConfetti(n) {
+  const pal = ['#ff5a4a', '#ffd84a', '#5be37d', '#4aa8ff', '#ff7ad9', '#ffffff'];
+  for (let i = 0; i < n; i++) FX.screen(rand(0, W), rand(-80, -10), rand(-40, 40), rand(60, 170), rand(2.5, 4), 3, pal[i % pal.length], 40, 'rect');
+}
+function fxCamFlashes() {
+  for (let i = 0; i < 16; i++) FX.later(rand(0, 1.8), () => FX.screen(rand(W * 0.03, W * 0.97), rand(hz - H * 0.12, hz - 6), 0, 0, 0.14, 3, '#ffffff', 0, 'flash', true));
+}
+function fxStumps() {
+  for (let i = 0; i < 26; i++) FX.world(0, rand(0.1, 0.7), rand(-0.1, 0.1), -rand(1, 7), rand(0.5, 4), rand(-1.5, 1.5), rand(0.5, 1.2), rand(0.015, 0.03), Math.random() < 0.5 ? '#f1dca3' : '#c9a86a', 9.8);
+  fxDust(0, 0, 0.9);
+  FX.shake = 14; FX.flash = 0.45; FX.flashCol = '255,90,70'; FX.slow = 0.9; FX.excite = 0.7;
+}
+function fxReaction(runs, c) {
+  if (runs >= 6) {
+    G.callout = { text: 'SIX!', color: '#ffd84a', t0: G.time };
+    for (let i = 0; i < 3; i++) FX.later(i * 0.28, () => fxFirework(rand(W * 0.2, W * 0.8), rand(H * 0.08, H * 0.3)));
+    fxConfetti(90); fxCamFlashes(); SFX.cheer(1); FX.excite = 1; FX.shake = Math.max(FX.shake, 6);
+  } else if (runs === 4) {
+    G.callout = { text: 'FOUR!', color: '#7dffa1', t0: G.time };
+    FX.later(0.1, () => fxFirework(rand(W * 0.3, W * 0.7), rand(H * 0.1, H * 0.28)));
+    fxConfetti(50); fxCamFlashes(); SFX.cheer(0.75); FX.excite = 0.8;
+  } else if (runs >= 2) { SFX.cheer(0.35); FX.excite = Math.max(FX.excite, 0.35); }
+  else if (runs === 1) { SFX.cheer(0.15); FX.excite = Math.max(FX.excite, 0.15); }
+  else SFX.groan(0.25);
+}
+
+/* ---- levels */
+let startLevel = 0;
+let mode = 'match', appState = 'home', started = false, practiceType = '';   // match | practice | demo ; home | play
+const curTheme = () => THEMES[LEVELS[G.level || 0].theme];
+function paceText(lv) { return lv.speed[0] + '–' + lv.speed[1] + ' km/h'; }
+function applyLevel(i) {
+  const lv = LEVELS[i];
+  CFG.SPEED_KMH = lv.speed; CFG.LENGTH_WEIGHTS = lv.weights; CFG.LINE_ON_STUMPS = lv.onStumps; CFG.LINE_NEAR = lv.near;
+  CFG.SWING_ACC_MAX = lv.swing; CFG.BOUNDARY = lv.boundary;
+  SFX.rain(!!THEMES[lv.theme].rain);
+}
+function announceLevel(up) {
+  const lv = LEVELS[G.level];
+  G.levelBanner = { t0: G.time, head: up ? 'LEVEL UP!  Level ' + (G.level + 1) : 'LEVEL ' + (G.level + 1), name: lv.name, sub: lv.sub + '  ·  Pace ' + paceText(lv) };
+  if (up) { SFX.levelUp(); fxConfetti(40); }
+}
+function checkLevelUp() {
+  let up = false;
+  while (G.level < LEVELS.length - 1 && G.score >= LEVELS[G.level].target) { G.level++; up = true; }
+  if (up) { applyLevel(G.level); announceLevel(true); }
+}
+
+let hsOpen = false, hiCache = HS.top();
+function recordInnings() {                 // store a finished/abandoned innings in the high-score table
+  if (mode !== 'match' || G.saved || G.score <= 0) return 0;   // only real matches reach the high-score table
+  G.saved = true;
+  let date = '';
+  try { date = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' }); } catch (e) {}
+  const rank = HS.add({ score: G.score, balls: G.balls, level: G.level, best: G.best ? G.best.runs + ' (' + G.best.label + ')' : '', date });
+  hiCache = HS.top();
+  return rank;
+}
+function pickWeighted(w) {
+  let tot = 0; for (const k in w) tot += w[k];
+  let r = Math.random() * tot;
+  for (const k in w) { r -= w[k]; if (r <= 0) return k; }
+  return Object.keys(w)[0];
+}
+
+/* ---------------------------------------------------------------------
+ *  GAME STATE
+ * ------------------------------------------------------------------- */
+const G = {};
+function resetGame() {
+  Object.assign(G, {
+    time: 0, phase: 'countdown', cd: CFG.NEXT_BALL_DELAY,
+    score: 0, balls: 0, best: null, over: false, overTimer: 0,
+    ball: null, plan: null, banner: null, last: null,
+    swing: { active: false, t: 0, used: false },
+    bowler: { x: BOWL.HOME_X, state: 'idle', t: 0, t2: 0, ph: 0, dir: -1, psi: deg(15), vx: 0, released: false, runT: BOWL.RUN_T, startX: BOWL.START_X },
+    stumpsDown: false, parts: [], camTrack: false,
+    level: startLevel, callout: null, levelBanner: null, tag: null, ropeHit: null, hist: [], deliveryInfo: '', saved: false, hsRank: 0
+  });
+  FX.reset(); applyLevel(G.level); announceLevel(false);
+  $('over').classList.add('hidden');
+}
+
+/* ---- delivery flow */
+function startRunUp() {
+  G.ball = null; G.plan = planDelivery(); G.swing = { active: false, t: 0, used: false };
+  G.banner = null; G.stumpsDown = false; G.parts = [];   // stumps are re-pitched for every ball (practice / demo)
+  G.phase = 'runup';
+  const bw = G.bowler;
+  const spinner = !!DTYPES[G.plan.type].turn;           // spinners take a short, slow run-up
+  Object.assign(bw, { state: 'run', t: 0, t2: 0, dir: -1, runT: spinner ? 1.15 : BOWL.RUN_T, startX: spinner ? 23.4 : BOWL.START_X,
+    x: spinner ? 23.4 : BOWL.START_X, released: false, psi: deg(15) });
+  SFX.start();
+}
+function bowlerShoulder(bw) {
+  const d = bw.dir, lean = bw.state === 'run' ? 0.12 : 0.15;
+  return { x: bw.x + d * lean, y: BOWL.SHOULDER_H - 0.03 };
+}
+function bowlerHand(bw) {
+  const s = bowlerShoulder(bw), d = bw.dir;
+  return { x: s.x + d * BOWL.ARM_LEN * Math.sin(bw.psi), y: s.y - BOWL.ARM_LEN * Math.cos(bw.psi) };
+}
+function releaseBall() {
+  const bw = G.bowler, p = G.plan;
+  bw.psi = BOWL.REL_PSI;
+  const h = bowlerHand(bw);
+  const sol = solveDelivery(p, { x: h.x, y: h.y, z: p.z0 });
+  G.ball = sol.ball; G.expect = sol.expect;
+  G.phase = 'live';
+  const cur = { col: p.color, x0: h.x, z0: p.z0, px: null, pz: null, ez: null, hit: false, hx: 0, hz: 0 };
+  G.ball.cur = cur; G.ball.col = p.color; G.hist.unshift(cur); if (G.hist.length > 6) G.hist.pop();
+  const kmh = Math.round(p.speed * 3.6);
+  G.deliveryInfo = p.label + ' \u00b7 ' + kmh + ' km/h \u00b7 ' + p.lenName;
+  G.tag = { t0: G.time, text: p.label, sub: kmh + ' km/h \u00b7 ' + p.lenName, color: p.color };
+  SFX.release();
+}
+function updateBowler(dt) {
+  const bw = G.bowler;
+  const oldx = bw.x;
+  if (bw.state === 'run') {
+    bw.t += dt;
+    const u = Math.min(bw.t / bw.runT, 1);
+    bw.x = bw.startX - (bw.startX - BOWL.REL_X) * (0.35 * u + 0.65 * u * u);
+    const a0 = bw.runT - BOWL.ARM_T;
+    if (bw.t < a0) bw.psi = deg(15) + 0.35 * Math.sin(bw.t * 9);
+    else bw.psi = lerp(deg(15), BOWL.REL_PSI, Math.pow(Math.min((bw.t - a0) / BOWL.ARM_T, 1), 1.25));
+    if (bw.t >= bw.runT && !bw.released) { bw.released = true; bw.state = 'follow'; bw.t2 = 0; releaseBall(); }
+  } else if (bw.state === 'follow') {
+    bw.t2 += dt;
+    const w = Math.min(bw.t2 / 0.45, 1), w2 = Math.min(bw.t2 / 0.4, 1);
+    bw.x = BOWL.REL_X - (BOWL.REL_X - BOWL.FOLLOW_X) * (1 - (1 - w) * (1 - w));
+    bw.psi = BOWL.REL_PSI - deg(105) * (1 - (1 - w2) * (1 - w2));
+    if (bw.t2 > 0.9) { bw.state = 'walk'; bw.dir = 1; bw.psi = deg(10); }
+  } else if (bw.state === 'walk') {
+    bw.x += 3.2 * dt;
+    bw.psi = deg(10) + 0.25 * Math.sin(G.time * 6);
+    if (bw.x >= BOWL.HOME_X) { bw.x = BOWL.HOME_X; bw.state = 'idle'; bw.dir = -1; }
+  }
+  bw.vx = (bw.x - oldx) / dt;
+  bw.ph += Math.abs(bw.vx) * dt * (TAU / 2.1);
+  const si = Math.floor(bw.ph / Math.PI);                 // footfall -> thud + dust
+  if (si !== bw.si) { bw.si = si; if (Math.abs(bw.vx) > 2.5) { SFX.step(clamp(Math.abs(bw.vx) / 6, 0.3, 1)); FX.world(bw.x, 0.04, 0, -bw.dir * rand(0.2, 0.8), rand(0.2, 0.7), rand(-0.3, 0.3), 0.5, 0.03, '#d6be8c', 4); } }
+}
+
+/* ---- shot results */
+function setBanner(text, color, sub, runs, sticky) {
+  G.banner = { text, color, sub: sub || '', runs: runs || '', t0: G.time, sticky: !!sticky };
+}
+function shotDirectionName(a) {
+  const d = a * 180 / Math.PI, ad = Math.abs(d);
+  if (ad > 100) return d > 0 ? 'behind the keeper (off)' : 'fine leg';
+  if (ad <= 12) return 'straight';
+  if (d > 0) return d < 60 ? 'through the covers' : 'square off side';
+  return d > -60 ? 'to mid-wicket' : 'square leg';
+}
+function classify(info) {
+  const ms = Math.abs(info.offsetMs);
+  const side = info.offsetMs < 0 ? 'Early' : 'Late';
+  if (info.edge) return { cls: 'edge', label: 'Edge', color: '#ffb347' };
+  if (ms <= CFG.PERFECT_MS) return { cls: 'perfect', label: 'PERFECT!', color: '#ffd84a' };
+  if (ms <= CFG.GOOD_MS) return { cls: 'good', label: 'Good', color: '#5be37d' };
+  if (ms <= CFG.AVG_MS) return { cls: 'avg', label: side, color: '#ff9f45' };
+  return { cls: 'poor', label: side, color: '#ff7a6b' };
+}
+function timingText(ms) {
+  const r = Math.round(ms);
+  return (r > 0 ? '+' : '') + r + ' ms ' + (r < 0 ? '(early)' : r > 0 ? '(late)' : '(spot on)');
+}
+function onContact(b) {
+  const inf = b.info, c = classify(inf);
+  inf.cls = c; inf.kmh = inf.exit * 3.6;
+  G.last = { label: c.label, color: c.color, timing: timingText(inf.offsetMs), kmh: Math.round(inf.kmh), runs: null,
+    dirName: shotDirectionName(inf.dir) };
+  setBanner(c.label, c.color, G.last.timing + '  \u00b7  ' + G.last.kmh + ' km/h', 'runs\u2026');
+  b.hot = inf.exit > 26;
+  if (b.cur) { b.cur.hit = true; b.cur.hx = b.x; b.cur.hz = b.z; }
+  const power = clamp(inf.exit / 40, 0.3, 1);
+  SFX.hit(inf.q, power, inf.edge); fxHit(b, c, power);
+}
+function considerBest(runs, label, kmh, dist) {
+  const cur = G.best;
+  if (!cur || runs > cur.runs || (runs === cur.runs && kmh > cur.kmh)) {
+    G.best = { runs, label, kmh: Math.round(kmh), dist: Math.round(dist) };
+  }
+}
+function ballDeadHit(b, reason, crossedAir) {
+  if (b.dead) return;
+  b.dead = true; b.deadAt = G.time;
+  const inf = b.info, c = inf.cls;
+  const dist = Math.hypot(b.x, b.z);
+  const reachedRope = reason === 'boundary';
+  // BOUNDARY RULES: the ball must actually cross the rope.
+  //   SIX  = crosses the rope without having touched the ground since the bat.
+  //   FOUR = lands on the ground first, then crosses the rope.
+  // Anything that stops short of the rope is run for 0-3 by timing and distance.
+  let runs = 0;
+  if (reachedRope) runs = crossedAir ? 6 : 4;
+  else if (c.cls === 'perfect') runs = dist >= 35 ? 3 : 2;
+  else if (c.cls === 'good') runs = dist >= 40 ? 3 : 2;
+  else if (c.cls === 'avg') runs = dist >= 25 ? 2 : 1;
+  else runs = dist >= 15 ? 1 : 0;
+  G.score += runs; G.balls++;
+  G.last.runs = runs; G.last.dist = Math.round(dist);
+  considerBest(runs, c.label, inf.kmh, dist);
+  setBanner(c.label, c.color, G.last.timing + '  \u00b7  ' + G.last.kmh + ' km/h  \u00b7  ' + G.last.dirName +
+    (reachedRope ? (crossedAir ? '  \u00b7  over the rope on the full' : '  \u00b7  bounced, then crossed the rope') : ''),
+    (runs === 6 ? 'SIX!  ' : runs === 4 ? 'FOUR!  ' : '') + '+' + runs + (runs === 1 ? ' run' : ' runs'));
+  if (reachedRope) { G.ropeHit = { x: b.x, z: b.z, t0: G.time, six: crossedAir }; fxSparks({ x: b.x, y: 0.5, z: b.z, vx: 0, vy: 1, vz: 0 }, crossedAir ? '#ffd84a' : '#7dffa1', 24, 5); }
+  fxReaction(runs, c); checkLevelUp();
+  G.phase = 'countdown'; G.cd = CFG.NEXT_BALL_DELAY;
+}
+function ballDeadMiss(b) {
+  if (b.dead) return;
+  b.dead = true; b.deadAt = G.time;
+  G.balls++;
+  G.last = { label: 'Missed', color: '#d7dde5', timing: 'no contact', kmh: null, runs: 0, dirName: '' };
+  setBanner('Missed', '#d7dde5', G.swing.used ? 'no bat on ball \u00b7 the ball missed the stumps' : 'left alone \u00b7 the ball missed the stumps', '+0 runs');
+  SFX.groan(G.swing.used ? 0.5 : 0.2);
+  G.phase = 'countdown'; G.cd = CFG.NEXT_BALL_DELAY;
+}
+function ballBowled(b, vx, vy) {
+  b.dead = true; b.deadAt = G.time; b.bowled = true;
+  const real = mode === 'match';                       // practice / demo: stumps fly, but there is no wicket
+  G.balls++; G.stumpsDown = true;
+  if (real) { G.over = true; G.overTimer = 0; G.phase = 'over'; } else { G.phase = 'countdown'; G.cd = CFG.NEXT_BALL_DELAY; }
+  G.last = { label: real ? 'BOWLED!' : 'Bowled', color: real ? '#ff5a4a' : '#ff9f5a', timing: '\u2014', kmh: null, runs: 0, dirName: '' };
+  setBanner(real ? 'BOWLED!' : 'Bowled', real ? '#ff5a4a' : '#ff9f5a', real ? 'missed it, and it hit the stumps' : (mode === 'demo' ? 'the demo batsman missed that one' : 'no wicket in practice \u00b7 keep going'), '', real);
+  SFX.stumps(); fxStumps();
+  if (real) { SFX.cheer(0.9); fxCamFlashes(); G.hsRank = recordInnings(); }   // wicket: crash of timber, then the crowd roars
+  // the ball carries on, slower, after knocking the stumps out
+  b.vx = -Math.abs(vx) * 0.35; b.vy = Math.abs(vy) * 0.4 + 1.2; b.vz *= 0.3;
+  // stumps and bails fly
+  const sp = Math.abs(vx);
+  for (let i = -1; i <= 1; i++) {
+    G.parts.push({ x: 0, y: CFG.STUMP_H / 2, ang: 0, len: CFG.STUMP_H, w: 0.04, lat: i,
+      vx: -sp * rand(0.10, 0.22), vy: rand(1.2, 3.6), av: rand(-11, 11), col: '#f1dca3' });
+  }
+  for (let i = 0; i < 2; i++) {
+    G.parts.push({ x: 0, y: CFG.STUMP_H + 0.01, ang: 0, len: CFG.BAIL_LEN, w: 0.03, lat: i ? 0.5 : -0.5,
+      vx: -sp * rand(0.06, 0.3), vy: rand(3, 6.5), av: rand(-25, 25), col: '#fff3c9' });
+  }
+}
+
+/* ---- main update (one fixed step) */
+function updateBall(dt, tsStart) {
+  const b = G.ball;
+  if (!b || !b.sim) return;
+  const prev = { x: b.x, y: b.y, z: b.z }, pb = b.bounces;
+  stepBall(b, dt);
+  b.age += dt;
+  if (b.bounces !== pb) {                                   // ball pitched: thud, dust / grass, delivery-map mark
+    const vin = b.lastVin || 0;
+    if (vin > 1.2) {
+      const pw = clamp(vin / 22, 0.15, 1);
+      if (b.lastOnP) fxDust(b.x, b.z, pw); else fxGrass(b.x, b.z, pw);
+      if (b.bounces <= 4) SFX.bounce(vin * (b.hit ? 0.7 : 1));
+    }
+    if (b.cur && !b.hit && b.bounces === 1) { b.cur.px = b.x; b.cur.pz = b.z; }
+  }
+  if (b.cur && !b.hit && b.cur.ez === null && prev.x > 0 && b.x <= 0) b.cur.ez = b.z;
+
+  // fading trail
+  if ((Math.round(b.age / dt) & 1) === 0) b.trail.push({ x: b.x, y: b.y, z: b.z, t: G.time });
+  while (b.trail.length && G.time - b.trail[0].t > 0.35) b.trail.shift();
+
+  // bat contact: only while the bat is really swinging
+  if (!b.hit && !b.dead && G.swing.active && tsStart < CONTACT_END) {
+    if (checkBatContact(b, prev, tsStart, dt)) onContact(b);
+  }
+
+  // stumps: the only way to get out (requires: no bat contact AND a real ball/stump collision)
+  if (!b.hit && !b.dead) {
+    const xf = CFG.STUMP_HALF_T + CFG.BALL_R;
+    if (prev.x > xf && b.x <= xf) {
+      const f = (prev.x - xf) / (prev.x - b.x);
+      const yc = prev.y + (b.y - prev.y) * f, zc = prev.z + (b.z - prev.z) * f;
+      if (Math.abs(zc) <= CFG.STUMP_W / 2 + CFG.BALL_R && yc <= CFG.STUMP_H + CFG.BALL_R && yc >= 0) {
+        ballBowled(b, b.vx, b.vy);
+        return;
+      }
+    }
+    if (b.x < -0.1) { ballDeadMiss(b); }                   // went past: wide, over or beside the stumps
+  }
+
+  // end of a hit ball
+  if (b.hit && !b.dead) {
+    const dist = Math.hypot(b.x, b.z);
+    if (dist >= CFG.BOUNDARY) ballDeadHit(b, 'boundary', !b.touched);
+    else if (b.onGround && Math.hypot(b.vx, b.vz) < 0.25) ballDeadHit(b, 'stopped', false);
+    else if (b.age > 20) ballDeadHit(b, 'timeout', false);
+  }
+  // stop simulating a ball that has come to rest or gone far away
+  if (b.onGround && Math.hypot(b.vx, b.vz) < 0.2) { b.vx = b.vy = b.vz = 0; b.sim = false; }
+  if (b.dead && G.time - b.deadAt > 9) b.sim = false;
+  if (Math.hypot(b.x, b.z) > CFG.BOUNDARY + 40) b.sim = false;   // only well beyond the rope (hit balls are ended at the rope first)
+}
+function updateParts(dt) {
+  for (const p of G.parts) {
+    p.vy -= CFG.GRAVITY * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.ang += p.av * dt;
+    const lo = p.len > 0.3 ? 0.03 : 0.015;
+    if (p.y < lo) { p.y = lo; p.vy = -p.vy * 0.35; p.vx *= 0.7; p.av *= 0.6; if (Math.abs(p.vy) < 0.4) { p.vy = 0; p.av *= 0.3; } }
+  }
+}
+function updateCamera(dt) {
+  /* Broadcast-style camera: tight on the batsman while he waits (so he is drawn big), pulling wide for the run-up, then
+   * following the ball in as it nears the bat.  Phones (narrow / portrait) get an even tighter frame. */
+  const narrow = W < 820 || W < H;
+  const tightL = narrow ? -1.7 : CFG.VIEW_L, tightR = narrow ? 6.2 : 10.5, wideR = CFG.VIEW_R;
+  let L = tightL, R = tightR, k = 1 - Math.exp(-dt * 4);
+  const b = G.ball;
+  if (G.phase === 'runup' || (G.phase === 'countdown' && G.cd < 1.0 && !G.over)) R = wideR;
+  if (b && !b.hit && !b.bowled && G.phase === 'live') { R = clamp(b.x + 2.6, tightR, wideR); k = 1 - Math.exp(-dt * 14); }
+  if (b && (b.hit || b.bowled) && (G.phase !== 'countdown' || G.cd > 1.8)) {
+    L = Math.min(L, b.x - 4); R = Math.max(R, b.x + 7);
+  }
+  L = clamp(L, -(CFG.BOUNDARY + 8), tightL); R = clamp(R, tightR, CFG.BOUNDARY + 12);
+  cam.L += (L - cam.L) * k; cam.R += (R - cam.R) * k;
+}
+function update(dt) {
+  G.time += dt;
+  FX.step(dt);
+  if (G.phase === 'countdown') {
+    const n0 = Math.ceil(G.cd - 1e-9); G.cd -= dt; const n1 = Math.ceil(G.cd - 1e-9);
+    if (n1 !== n0 && n1 >= 1 && n1 <= 4) SFX.tick(n1);
+    if (G.cd <= 0) { G.cd = 0; startRunUp(); }
+  }
+  updateBowler(dt);
+  if (mode === 'demo') demoAI();
+  const tsStart = G.swing.t;
+  if (G.swing.active) { G.swing.t += dt; if (G.swing.t > SWING_TOTAL) G.swing.active = false; }
+  updateBall(dt, tsStart);
+  updateParts(dt);
+  updateCamera(dt);
+  if (G.over) { G.overTimer += dt; if (G.overTimer > CFG.GAME_OVER_DELAY) showOver(); }
+}
+
+function doSwing() { if (hsOpen || mode === 'demo') return; startSwing(); }
+function demoAI() {                                  // demo batsman: predicts when the ball reaches the bat and swings with a little human error
+  const b = G.ball;
+  if (G.phase !== 'live' || !b || b.hit || b.dead || G.swing.used) return;
+  if (G.demoFor !== b) {
+    G.demoFor = b;
+    const sim = Object.assign({}, b, { trail: [] }); let t = 0, ok = false, best = 1e9, tBest = 0;
+    const cxT = CFG.BAT.PIVOT_X + CFG.BAT.SWEET_R * Math.sin(CFG.SWING.IDEAL), cyT = CFG.BAT.PIVOT_Y - CFG.BAT.SWEET_R * Math.cos(CFG.SWING.IDEAL);   // where the sweet spot is at the ideal instant
+    for (let i = 0; i < 1500; i++) {
+      stepBall(sim, CFG.STEP); t += CFG.STEP;
+      const d = Math.hypot(sim.x - cxT, sim.y - cyT); if (d < best) { best = d; tBest = t; }
+      if (sim.x < 0.6) break;
+    }
+    ok = best < 0.45; t = tBest;
+    const err = Math.random() < 0.12 ? rand(0.08, 0.16) * (Math.random() < 0.5 ? -1 : 1) : (Math.random() - 0.5) * 0.05;
+    G.demoAt = ok && Math.random() < 0.92 ? G.time + t - T_IDEAL + err : Infinity;
+  }
+  if (G.time >= G.demoAt) startSwing();
+}
+function startSwing() {
+  const b = G.ball;
+  if (G.phase === 'live' && b && !b.hit && !b.dead && !G.swing.active && !G.swing.used) {
+    G.swing.active = true; G.swing.t = 0; G.swing.used = true; SFX.swing();
+  }
+}
+
+/* ---------------------------------------------------------------------
+ *  HUD
+ * ------------------------------------------------------------------- */
+const el = {
+  score: $('score'), balls: $('balls'), last: $('last'), lastDetail: $('lastDetail'),
+  best: $('best'), bestDetail: $('bestDetail'), next: $('next'), nextDetail: $('nextDetail'), lvl: $('lvl'), lvlSub: $('lvlSub'), hi: $('hi')
+};
+function setText(e, t) { if (e.textContent !== t) e.textContent = t; }
+function bestText() { return G.best ? G.best.runs + ' runs \u00b7 ' + G.best.label : '\u2014'; }
+function bestDetail() { return G.best ? G.best.kmh + ' km/h \u00b7 ' + G.best.dist + ' m' : '\u00a0'; }
+function updateHUD() {
+  setText(el.score, String(G.score)); setText(el.balls, String(G.balls));
+  if (G.last) {
+    setText(el.last, G.last.label + (G.last.runs !== null && G.last.runs !== undefined ? '  +' + G.last.runs : ''));
+    el.last.style.color = G.last.color;
+    setText(el.lastDetail, G.last.kmh ? G.last.timing + ' \u00b7 ' + G.last.kmh + ' km/h' : G.last.timing);
+  } else { setText(el.last, '\u2014'); el.last.style.color = ''; setText(el.lastDetail, '\u00a0'); }
+  setText(el.best, bestText()); setText(el.bestDetail, bestDetail());
+  let n;
+  if (G.phase === 'countdown') n = 'Next ball in ' + Math.ceil(G.cd - 1e-9) + '\u2026';
+  else if (G.phase === 'runup') n = 'Bowler running in\u2026';
+  else if (G.phase === 'live') n = 'Ball in play';
+  else n = '\u2014';
+  setText(el.next, n);
+  const lv = LEVELS[G.level];
+  setText(el.lvl, (G.level + 1) + ' \u00b7 ' + lv.name);
+  setText(el.lvlSub, 'Pace ' + paceText(lv) + (lv.target === Infinity ? ' \u00b7 final level' : ' \u00b7 next at ' + lv.target));
+  setText(el.nextDetail, G.deliveryInfo || '\u00a0');
+  setText(el.hi, String(Math.max(hiCache, G.score)));
+  updateTip();
+}
+let tipKey = '', tipMin = false;
+function adviceAfterShot() {                     // feedback on the last shot, in practice mode
+  const L = G.last, plan = G.plan, T = plan && TIPS[plan.type];
+  if (!L) return null;
+  const when = T ? T.press + ' m' : '8 m', ms = /(\d+) ms/.exec(L.timing || '');
+  if (L.label === 'Missed') return { h: 'MISSED', b: 'No contact. ' + (T ? 'For this ball press when it is about ' + when + ' from your stumps. ' : '') + 'If it was well wide of the stumps or over them, leaving it was fine.' };
+  if (L.label === 'Bowled') return { h: 'BOWLED (no wicket in practice)', b: 'It hit the stumps because there was no contact. Press a little earlier. For this ball, about ' + when + ' from your stumps.' };
+  if (/\(late\)/.test(L.timing || '')) return { h: L.label.toUpperCase() + ' \u00b7 ' + L.timing, b: ms && +ms[1] <= 20 ? 'Almost perfect. Keep this timing.' : 'You were late: press a touch sooner (late shots go to the off side / behind).' };
+  if (/\(early\)/.test(L.timing || '')) return { h: L.label.toUpperCase() + ' \u00b7 ' + L.timing, b: ms && +ms[1] <= 20 ? 'Almost perfect. Keep this timing.' : 'You were early: press a touch later (early shots go to the leg side).' };
+  return { h: L.label.toUpperCase(), b: 'Well timed. Try the same press on the next ball.' };
+}
+function updateTip() {
+  const on = mode === 'practice' && appState === 'play';
+  $('tip').classList.toggle('off', !on);
+  if (!on) return;
+  $('tip').classList.toggle('min', tipMin);
+  const t = G.plan && TIPS[G.plan.type];
+  let key, head, body;
+  if ((G.phase === 'countdown' || G.phase === 'over') && G.balls > 0 && G.last) {
+    const a = adviceAfterShot(); key = 'after' + G.balls; head = a.h; body = a.b;
+  } else if (G.phase === 'countdown') {
+    key = 'cd' + practiceType; head = practiceType && DTYPES[practiceType] ? DTYPES[practiceType].label + ' \u2014 how to play it' : 'Practice tips';
+    body = practiceType && TIPS[practiceType] ? TIPS[practiceType].tip : GENERAL_TIP;
+  } else { key = 'ball' + G.balls + (G.plan ? G.plan.type : ''); head = (G.plan ? DTYPES[G.plan.type].label : '') + ' \u2014 how to play it'; body = t ? t.tip : GENERAL_TIP; }
+  if (key !== tipKey) { tipKey = key; $('tipHead').textContent = head; $('tipBody').textContent = body; }
+}
+function showOver() {
+  if (!$('over').classList.contains('hidden')) return;
+  $('oScore').textContent = G.score; $('oBalls').textContent = G.balls;
+  $('oLevel').textContent = (G.level + 1) + ' \u00b7 ' + LEVELS[G.level].name;
+  $('oNew').textContent = G.hsRank === 1 ? 'NEW HIGH SCORE!' : G.hsRank > 0 ? 'Top ' + HS_MAX + ' finish: #' + G.hsRank : '';
+  $('oList').innerHTML = HS.html(5, G.hsRank);
+  $('oBest').textContent = G.best ? G.best.runs + ' runs \u00b7 ' + G.best.label + ' \u00b7 ' + G.best.kmh + ' km/h' : 'none';
+  $('over').classList.remove('hidden');
+}
+
+/* ---------------------------------------------------------------------
+ *  RENDERING
+ * ------------------------------------------------------------------- */
+const cam = { L: CFG.VIEW_L, R: 10.5 };
+let sc = 30, gy = 400, hz = 280, dp = 5;       // per-frame view params: px/m, ground baseline, horizon, near depth px/m
+/* Ground depth (sideways z) projection.  Near the pitch 1 m of z is `dp` px (so lines/shadows stay readable); further out it
+ * is compressed so the far boundary rope (z = -BOUNDARY) lands exactly on the stadium wall at the horizon `hz`, and the
+ * near rope (z = +BOUNDARY) at the bottom of the screen.  The drawn rope is therefore the SAME circle the game logic uses. */
+let zK = 280, zC = 40;
+const zy = z => zK * z / (Math.abs(z) + zC);
+function setDepthView() {
+  const D = gy - hz, B = CFG.BOUNDARY, s0 = Math.max(dp, 1.5 * D / B);
+  zC = D * B / (s0 * B - D); zK = s0 * zC;
+}
+const SX = x => (x - cam.L) * sc;
+const SY = (y, z) => gy - y * sc + zy(z || 0);
+
+let crowd = [];
+function buildCrowd() {
+  let seed = 12345; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const pal = ['#e74c3c', '#f1c40f', '#ecf0f1', '#3498db', '#e67e22', '#9b59b6', '#2ecc71', '#fd79a8'];
+  crowd = [];
+  const n = Math.floor(W * 0.12 * 14);
+  for (let i = 0; i < n; i++) crowd.push({ x: rnd(), y: rnd(), c: pal[Math.floor(rnd() * pal.length)] });
+}
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth || 800; H = window.innerHeight || 600;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  if (canvas.style) { canvas.style.width = W + 'px'; canvas.style.height = H + 'px'; }
+  buildCrowd();
+}
+
+function seg(ax, ay, bx, by, wM, color, minPx) {            // thick line between two world points (z = 0)
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(minPx || 1, wM * sc); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(SX(ax), SY(ay)); ctx.lineTo(SX(bx), SY(by)); ctx.stroke();
+}
+function disc(x, y, rM, color, minPx) {
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(SX(x), SY(y), Math.max(minPx || 1, rM * sc), 0, TAU); ctx.fill();
+}
+function ik(ax, ay, bx, by, l1, l2, bend) {                 // two-bone IK, returns the joint (knee/elbow)
+  const dx = bx - ax, dy = by - ay;
+  const dd = clamp(Math.hypot(dx, dy), Math.abs(l1 - l2) + 1e-3, l1 + l2 - 1e-3);
+  const base = Math.atan2(dy, dx);
+  const A = Math.acos(clamp((l1 * l1 + dd * dd - l2 * l2) / (2 * l1 * dd), -1, 1)) * bend;
+  return { x: ax + l1 * Math.cos(base + A), y: ay + l1 * Math.sin(base + A) };
+}
+function toward(from, to, l) {
+  const dx = to.x - from.x, dy = to.y - from.y, d = Math.hypot(dx, dy) || 1;
+  return { x: from.x + dx / d * l, y: from.y + dy / d * l };
+}
+
+function drawStands() {
+  const top = hz - Math.max(60, H * 0.13);
+  const g = ctx.createLinearGradient(0, top, 0, hz);
+  g.addColorStop(0, '#3a4660'); g.addColorStop(1, '#27324a');
+  ctx.fillStyle = g; ctx.fillRect(0, top, W, hz - top);
+  const par = -cam.L * sc * 0.04;
+  for (const c of crowd) {
+    const x = ((c.x * W + par) % W + W) % W, y = top + 6 + c.y * (hz - top - 22);
+    ctx.fillStyle = c.c; ctx.fillRect(x, y - FX.excite * Math.abs(Math.sin(G.time * 13 + c.x * 57)) * 5, 2.4, 2.4);
+  }
+  ctx.fillStyle = '#5b6786'; ctx.fillRect(0, top - 5, W, 5);
+  const cols = ['#d63031', '#0984e3', '#fdcb6e', '#00b894', '#6c5ce7'];       // advertising boards
+  const bw = 70, bh = 16;
+  for (let x = -((cam.L * sc * 0.3) % (bw * 5)) - bw * 5, i = 0; x < W + bw; x += bw, i++) {
+    ctx.fillStyle = cols[((i % 5) + 5) % 5]; ctx.fillRect(x, hz - bh, bw - 2, bh);
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(x + 8, hz - bh + 5, bw - 18, 3);
+  }
+}
+function drawPitch() {
+  const xa = SX(CFG.PITCH_X0), xb = SX(CFG.PITCH_X1), hw = zy(CFG.PITCH_HALF_W);
+  ctx.fillStyle = '#cfae74'; ctx.fillRect(xa, gy - hw, xb - xa, hw * 2);
+  ctx.fillStyle = 'rgba(120,85,40,.28)';                                   // worn lengths
+  ctx.fillRect(SX(0.5), gy - hw * 0.5, 5 * sc, hw); ctx.fillRect(SX(15.2), gy - hw * 0.5, 4.5 * sc, hw);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1.2, 0.05 * sc);
+  const cr = [CFG.POPPING_CREASE, CFG.PITCH_LEN - CFG.POPPING_CREASE, 0, CFG.PITCH_LEN];
+  for (const cx of cr) { ctx.beginPath(); ctx.moveTo(SX(cx), gy - hw - 3); ctx.lineTo(SX(cx), gy + hw + 3); ctx.stroke(); }
+  for (const zz of [-1.32, 1.32]) {
+    ctx.beginPath(); ctx.moveTo(SX(0), gy + zy(zz)); ctx.lineTo(SX(CFG.POPPING_CREASE), gy + zy(zz));
+    ctx.moveTo(SX(CFG.PITCH_LEN), gy + zy(zz)); ctx.lineTo(SX(CFG.PITCH_LEN - CFG.POPPING_CREASE), gy + zy(zz)); ctx.stroke();
+  }
+}
+function drawRope() {                          // the boundary rope: the real circle of radius BOUNDARY on the ground plane
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, hz - 2, W, H - hz + 4); ctx.clip();
+  const B = CFG.BOUNDARY, pts = [];
+  for (let a = 0; a <= 360; a += 2) { const r = a * Math.PI / 180; pts.push([SX(B * Math.cos(r)), gy + zy(B * Math.sin(r))]); }
+  const path = () => { ctx.beginPath(); pts.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); };
+  ctx.lineWidth = Math.max(3, sc * 0.12); ctx.setLineDash([]); ctx.strokeStyle = '#ffffff'; path(); ctx.stroke();          // white rope
+  ctx.setLineDash([sc * 0.8, sc * 0.8]); ctx.strokeStyle = '#d63031'; path(); ctx.stroke();                                // red marker stripes
+  ctx.restore();
+}
+function drawStumpSet(x) {
+  const sx = SX(x), base = SY(0), h = CFG.STUMP_H * sc, w = Math.max(3, 0.05 * sc), gap = w * 1.5;
+  ctx.fillStyle = '#e9d29a';
+  for (let i = -1; i <= 1; i++) { ctx.fillRect(sx + i * gap - w / 2, base - h, w, h); }
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  for (let i = -1; i <= 1; i++) ctx.fillRect(sx + i * gap + w * 0.12, base - h, w * 0.38, h);
+  ctx.fillStyle = '#fff6d6';
+  const bh = Math.max(2, 0.02 * sc);
+  ctx.fillRect(sx - gap - w / 2, base - h - bh, gap, bh); ctx.fillRect(sx, base - h - bh, gap + w / 2, bh);
+}
+function drawParts() {
+  for (const p of G.parts) {
+    ctx.save();
+    ctx.translate(SX(p.x) + p.lat * 6, SY(p.y)); ctx.rotate(-p.ang);
+    ctx.fillStyle = p.col;
+    const w = Math.max(p.len > 0.3 ? 3 : 2, p.w * sc);
+    ctx.fillRect(-w / 2, -p.len * sc / 2, w, p.len * sc);
+    ctx.restore();
+  }
+}
+
+function drawHead(cx, cy, R, face, helmet) {            // px coordinates, face = +1 facing right, -1 facing left
+  ctx.fillStyle = '#b87a4b'; ctx.beginPath(); ctx.arc(cx + face * R * 0.15, cy, R * 0.92, 0, TAU); ctx.fill();
+  if (helmet) {
+    ctx.fillStyle = '#16306b'; ctx.beginPath();
+    if (face > 0) ctx.arc(cx, cy, R * 1.12, deg(100), deg(345), false); else ctx.arc(cx, cy, R * 1.12, deg(195), deg(80), false);
+    ctx.closePath(); ctx.fill();
+    ctx.fillRect(cx + (face > 0 ? R * 0.5 : -R * 1.6), cy - R * 0.45, R * 1.1, R * 0.4);
+    ctx.strokeStyle = '#b9c0c9'; ctx.lineWidth = Math.max(0.8, R * 0.12);
+    const fx = cx + face * R * 1.2, tx = cx + face * R * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(cx + face * R * 0.7, cy - R * 0.1); ctx.lineTo(fx + face * R * 0.3, cy + R * 0.05);
+    ctx.moveTo(cx + face * R * 0.5, cy + R * 0.4); ctx.lineTo(fx + face * R * 0.25, cy + R * 0.45);
+    ctx.moveTo(fx + face * R * 0.3, cy + R * 0.05); ctx.lineTo(tx + face * R * 0.15, cy + R * 1.05);
+    ctx.moveTo(cx + face * R * 0.6, cy + R * 0.85); ctx.lineTo(tx + face * R * 0.15, cy + R * 1.05);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#c0392b'; ctx.beginPath();
+    ctx.arc(cx, cy - R * 0.1, R * 1.02, Math.PI, TAU); ctx.fill();
+    ctx.fillRect(cx + (face > 0 ? 0 : -R * 1.6), cy - R * 0.2, R * 1.6, R * 0.25);
+  }
+}
+
+function batAngleNow() { return G.swing.active ? batAngle(G.swing.t) : CFG.SWING.STANCE; }
+function drawBatsman() {
+  const S = CFG.SWING, B = CFG.BAT, th = batAngleNow();
+  const fwd = clamp((th - S.STANCE) / (deg(90) - S.STANCE), 0, 1);
+  const back = clamp((S.STANCE - th) / (S.STANCE - S.BACK), 0, 1);
+  const stride = G.swing.active ? smooth(clamp((G.swing.t - 0.06) / 0.20, 0, 1)) * (1 - smooth(clamp((G.swing.t - 0.55) / 0.2, 0, 1))) : 0;   // front foot steps into the ball, then settles
+  const hip = { x: 1.02 + 0.15 * fwd + 0.12 * stride - 0.05 * back, y: 0.90 - 0.05 * fwd - 0.06 * stride };
+  const sh = { x: hip.x + 0.07 + 0.10 * fwd - 0.05 * back, y: hip.y + 0.55 - 0.04 * fwd };
+  const head = { x: sh.x + 0.07, y: sh.y + 0.19 };
+  const rearFoot = { x: 0.80 - 0.02 * back + 0.05 * stride, y: 0 }, frontFoot = { x: 1.32 + 0.30 * stride, y: stride > 0.5 ? 0.0 : 0 };
+  const rk = ik(hip.x, hip.y, rearFoot.x, rearFoot.y, 0.48, 0.48, +1);
+  const fk = ik(hip.x, hip.y, frontFoot.x, frontFoot.y, 0.48, 0.48, +1);
+  const P = G.swing.active ? handsAt(G.swing.t) : handsAt(0), ax = Math.sin(th), ay = -Math.cos(th);
+  const hand1 = { x: P.x - ax * 0.12, y: P.y - ay * 0.12 }, hand2 = { x: P.x + ax * 0.02, y: P.y + ay * 0.02 };
+  const SHIRT = '#1f4fa3', WHITE = '#f6f6f1', SKIN = '#b87a4b';
+
+  ctx.fillStyle = 'rgba(0,0,0,.22)';                                        // shadow
+  ctx.beginPath(); ctx.ellipse(SX(1.05), SY(0), 0.6 * sc, Math.max(2, zy(0.25)), 0, 0, TAU); ctx.fill();
+
+  // far (rear) leg, then torso, then near leg
+  const legs = [[rearFoot, rk], [frontFoot, fk]];
+  for (let li = 0; li < 2; li++) {
+    const [foot, kn] = legs[li];
+    seg(hip.x, hip.y, kn.x, kn.y, 0.16, WHITE, 3);                          // thigh (trousers)
+    seg(kn.x, kn.y, foot.x, foot.y + 0.06, 0.12, WHITE, 3);                 // shin
+    const a = toward(kn, hip, 0.09), bpt = { x: foot.x, y: foot.y + 0.10 };
+    seg(a.x, a.y, bpt.x, bpt.y, 0.17, '#fbfbf6', 4);                        // leg pad
+    seg(a.x, a.y, bpt.x, bpt.y, 0.17, 'rgba(0,0,0,0)', 4);
+    ctx.strokeStyle = '#9aa7b4'; ctx.lineWidth = 1;                         // pad straps
+    for (const f of [0.3, 0.62]) {
+      const px = lerp(a.x, bpt.x, f), py = lerp(a.y, bpt.y, f);
+      ctx.beginPath(); ctx.moveTo(SX(px) - 3, SY(py)); ctx.lineTo(SX(px) + 3, SY(py)); ctx.stroke();
+    }
+    seg(foot.x - 0.04, 0.045, foot.x + 0.15, 0.045, 0.085, '#1b1b1b', 3);   // shoe
+    seg(foot.x - 0.04, 0.012, foot.x + 0.15, 0.012, 0.025, '#fafafa', 1);
+    if (li === 0) {
+      // torso between the legs
+      seg(hip.x, hip.y, sh.x, sh.y, 0.30, SHIRT, 6);
+      seg(hip.x, hip.y + 0.02, hip.x + 0.01, hip.y + 0.02, 0.31, '#13265a', 3);   // belt
+      const t1 = { x: lerp(hip.x, fk.x, 0.30) + 0.05, y: lerp(hip.y, fk.y, 0.30) };   // thigh pad (front thigh)
+      const t2 = { x: lerp(hip.x, fk.x, 0.78) + 0.05, y: lerp(hip.y, fk.y, 0.78) };
+      seg(t1.x, t1.y, t2.x, t2.y, 0.10, '#e4e8ee', 3);
+    }
+  }
+  // thigh pad over the front leg
+  const t1 = { x: lerp(hip.x, fk.x, 0.30) + 0.045, y: lerp(hip.y, fk.y, 0.30) };
+  const t2 = { x: lerp(hip.x, fk.x, 0.78) + 0.045, y: lerp(hip.y, fk.y, 0.78) };
+  seg(t1.x, t1.y, t2.x, t2.y, 0.10, '#e8ecf2', 3);
+  seg(t1.x, t1.y, t2.x, t2.y, 0.03, '#9aa7b4', 1);
+
+  // far arm, bat, near arm
+  const e2 = ik(sh.x, sh.y, hand2.x, hand2.y, 0.33, 0.33, -1);
+  seg(sh.x, sh.y, e2.x, e2.y, 0.085, '#183f85', 3); seg(e2.x, e2.y, hand2.x, hand2.y, 0.07, SKIN, 3);
+  // bat: handle + blade
+  const hA = { x: P.x - ax * 0.24, y: P.y - ay * 0.24 }, hB = { x: P.x + ax * B.R0, y: P.y + ay * B.R0 };
+  const tip = { x: P.x + ax * B.R1, y: P.y + ay * B.R1 };
+  seg(hA.x, hA.y, hB.x, hB.y, 0.032, '#222', 3);
+  seg(hB.x, hB.y, tip.x, tip.y, B.HALF_T * 2 + 0.01, '#9c6b2f', 7);
+  seg(hB.x, hB.y, tip.x, tip.y, B.HALF_T * 2 - 0.012, '#e9c88b', 5);
+  const mid = { x: P.x + ax * B.SWEET_R, y: P.y + ay * B.SWEET_R };
+  seg(mid.x - ax * 0.04, mid.y - ay * 0.04, mid.x + ax * 0.04, mid.y + ay * 0.04, 0.04, 'rgba(200,60,50,.8)', 3);
+  const e1 = ik(sh.x, sh.y, hand1.x, hand1.y, 0.33, 0.33, -1);
+  seg(sh.x, sh.y, e1.x, e1.y, 0.095, SHIRT, 4); seg(e1.x, e1.y, hand1.x, hand1.y, 0.075, SKIN, 3);
+  disc(hand1.x, hand1.y, 0.058, '#f4f4ee', 3); disc(hand2.x, hand2.y, 0.054, '#e9e9e2', 3);
+  disc(sh.x, sh.y, 0.095, SHIRT, 3);
+  // neck + head with helmet and grill
+  seg(sh.x, sh.y, head.x - 0.02, head.y - 0.1, 0.09, SKIN, 3);
+  drawHead(SX(head.x), SY(head.y), Math.max(4, 0.105 * sc), 1, true);
+}
+
+function drawBowler() {
+  const bw = G.bowler;
+  if (bw.x > cam.R + 2) return;
+  const d = bw.dir, x = bw.x, run = clamp(Math.abs(bw.vx) / 5.5, 0, 1);
+  const L1 = 0.47, L2 = 0.48;
+  let hipY = 0.95;
+  const legs = [0, 1].map(i => {
+    const a = bw.ph + i * Math.PI;
+    const th = 0.8 * Math.sin(a) * run, kb = (0.2 + 0.95 * Math.max(0, Math.sin(a - 1.2))) * run + 0.04;
+    const knee = { x: x + d * L1 * Math.sin(th), y: hipY - L1 * Math.cos(th) };
+    const foot = { x: knee.x + d * L2 * Math.sin(th - kb), y: knee.y - L2 * Math.cos(th - kb) };
+    return { knee, foot };
+  });
+  const minY = Math.min(legs[0].foot.y, legs[1].foot.y);
+  if (minY < 0) { hipY -= minY; for (const l of legs) { l.knee.y -= minY; l.foot.y -= minY; } }
+  const sh = bowlerShoulder(bw); sh.y += hipY - 0.95;
+  const hip = { x, y: hipY };
+  const head = { x: sh.x + d * 0.05, y: sh.y + 0.20 };
+  const SHIRT = '#c0392b', WHITE = '#f3f0e6', SKIN = '#b87a4b';
+
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(SX(x), SY(0), 0.5 * sc, Math.max(2, zy(0.25)), 0, 0, TAU); ctx.fill();
+  const order = legs[0].foot.x * d > legs[1].foot.x * d ? [1, 0] : [0, 1];
+  for (const li of order) {
+    const l = legs[li];
+    seg(hip.x, hip.y, l.knee.x, l.knee.y, 0.15, WHITE, 3); seg(l.knee.x, l.knee.y, l.foot.x, l.foot.y + 0.05, 0.11, WHITE, 3);
+    seg(l.foot.x - d * 0.02, l.foot.y + 0.04, l.foot.x + d * 0.16, l.foot.y + 0.04, 0.08, '#fafafa', 3);
+    seg(l.foot.x - d * 0.02, l.foot.y + 0.01, l.foot.x + d * 0.16, l.foot.y + 0.01, 0.03, '#555', 1);
+  }
+  // non-bowling arm
+  let psi2;
+  if (bw.state === 'run') {
+    const a0 = bw.runT - BOWL.ARM_T, w = clamp((bw.t - a0) / BOWL.ARM_T, 0, 1);
+    psi2 = bw.t < a0 ? deg(60) + 0.5 * Math.sin(bw.ph) : lerp(deg(115), deg(25), w * w);
+  } else psi2 = deg(25);
+  const arm2 = { x: sh.x + d * 0.62 * Math.sin(psi2), y: sh.y - 0.62 * Math.cos(psi2) };
+  seg(sh.x, sh.y, arm2.x, arm2.y, 0.08, SKIN, 3);
+  seg(hip.x, hip.y, sh.x, sh.y, 0.28, SHIRT, 6);
+  seg(hip.x, hip.y, hip.x, hip.y + 0.02, 0.29, '#f3f0e6', 3);
+  // bowling arm
+  const hand = { x: sh.x + d * BOWL.ARM_LEN * Math.sin(bw.psi), y: sh.y - BOWL.ARM_LEN * Math.cos(bw.psi) };
+  seg(sh.x, sh.y, lerp(sh.x, hand.x, 0.45), lerp(sh.y, hand.y, 0.45), 0.095, SHIRT, 4);
+  seg(lerp(sh.x, hand.x, 0.45), lerp(sh.y, hand.y, 0.45), hand.x, hand.y, 0.075, SKIN, 3);
+  disc(hand.x, hand.y, 0.05, SKIN, 3);
+  if (bw.state === 'run' && !bw.released) disc(hand.x, hand.y + 0.01, 0.06, '#c0201a', 4);   // ball in hand
+  disc(sh.x, sh.y, 0.09, SHIRT, 3);
+  seg(sh.x, sh.y, head.x, head.y - 0.1, 0.09, SKIN, 3);
+  drawHead(SX(head.x), SY(head.y), Math.max(4, 0.105 * sc), d, false);
+}
+
+function drawBall() {
+  const b = G.ball; if (!b) return;
+  // ground shadow at (x, z): shows the ball's line across the pitch
+  ctx.save(); ctx.beginPath(); ctx.rect(0, hz - 4, W, H); ctx.clip();
+  const sa = clamp(0.35 - b.y * 0.03, 0.08, 0.35), srx = Math.max(3, 0.05 * sc);
+  ctx.fillStyle = 'rgba(0,0,0,' + sa + ')';
+  ctx.beginPath(); ctx.ellipse(SX(b.x), SY(0, b.z), srx, srx * 0.4, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  // fading trail
+  const tr = b.trail;
+  for (let i = 1; i < tr.length; i++) {
+    const a = 1 - (G.time - tr[i].t) / 0.35; if (a <= 0) continue;
+    ctx.globalAlpha = (b.hot ? 0.7 : 0.55) * a; ctx.strokeStyle = b.hot ? '#ffaa3c' : (b.col || '#ffebdc'); ctx.lineWidth = Math.max(1.5, (b.hot ? 9 : 5) * a);
+    ctx.lineCap = 'round'; ctx.beginPath();
+    ctx.moveTo(SX(tr[i - 1].x), SY(tr[i - 1].y, tr[i - 1].z)); ctx.lineTo(SX(tr[i].x), SY(tr[i].y, tr[i].z)); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // ball: enlarged so it stays visible, red with a rotating white seam
+  const rv = Math.max(4.6, CFG.BALL_R * sc * 3.6), px = SX(b.x), py = SY(b.y, b.z);
+  if (b.hot) { const gl = ctx.createRadialGradient(px, py, 0, px, py, rv * 4); gl.addColorStop(0, 'rgba(255,200,90,.55)'); gl.addColorStop(1, 'rgba(255,120,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(px, py, rv * 4, 0, TAU); ctx.fill(); }
+  ctx.save(); ctx.translate(px, py); ctx.rotate(b.seam);
+  ctx.beginPath(); ctx.arc(0, 0, rv, 0, TAU); ctx.fillStyle = '#c4161c'; ctx.fill();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.arc(-rv * 0.3, -rv * 0.35, rv * 0.45, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1.1, rv * 0.18);
+  ctx.beginPath(); ctx.moveTo(-rv * 1.1, 0); ctx.quadraticCurveTo(0, rv * 0.55, rv * 1.1, 0); ctx.stroke();
+  ctx.setLineDash([1.2, 1.2]); ctx.lineWidth = Math.max(0.8, rv * 0.1); ctx.strokeStyle = '#ffd7d7';
+  ctx.beginPath(); ctx.moveTo(-rv * 1.1, -rv * 0.28); ctx.quadraticCurveTo(0, rv * 0.3, rv * 1.1, -rv * 0.28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-rv * 1.1, rv * 0.28); ctx.quadraticCurveTo(0, rv * 0.8, rv * 1.1, rv * 0.28); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, rv, 0, TAU); ctx.stroke();
+}
+function drawBanner() {
+  const bn = G.banner; if (!bn) return;
+  const age = G.time - bn.t0;
+  let alpha = 1;
+  if (!bn.sticky && age > 4.2) alpha = clamp(1 - (age - 4.2) / 0.8, 0, 1);
+  if (alpha <= 0) return;
+  const fs = clamp(W * 0.06, 34, 86), pop = 1 + 0.28 * Math.exp(-age * 9);
+  ctx.save(); ctx.globalAlpha = alpha; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.translate(W / 2, Math.max(H * 0.30, 150)); ctx.scale(pop, pop);
+  const ff = 'Arial, Helvetica, sans-serif';
+  ctx.font = '900 ' + fs + 'px ' + ff; ctx.lineJoin = 'round';
+  ctx.lineWidth = fs * 0.14; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(bn.text, 0, 0);
+  ctx.fillStyle = bn.color; ctx.fillText(bn.text, 0, 0);
+  ctx.font = '700 ' + fs * 0.34 + 'px ' + ff; ctx.lineWidth = fs * 0.07;
+  if (bn.sub) { ctx.strokeText(bn.sub, 0, fs * 0.5); ctx.fillStyle = '#fff'; ctx.fillText(bn.sub, 0, fs * 0.5); }
+  ctx.font = '800 ' + fs * 0.5 + 'px ' + ff; ctx.lineWidth = fs * 0.1;
+  if (bn.runs) { ctx.strokeText(bn.runs, 0, fs * 1.08); ctx.fillStyle = '#ffe27a'; ctx.fillText(bn.runs, 0, fs * 1.08); }
+  ctx.restore();
+}
+function drawCountdownBig() {
+  if (G.phase !== 'countdown' || G.over) return;
+  const n = Math.ceil(G.cd - 1e-9); if (n < 1 || n > 5) return;
+  const frac = G.cd - Math.floor(G.cd - 1e-9) ; // 1 -> 0 inside each second
+  ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = 0.35 + 0.35 * frac;
+  ctx.font = '900 ' + clamp(W * 0.1, 50, 130) + 'px Arial, Helvetica, sans-serif';
+  ctx.fillStyle = '#fff'; ctx.fillText(String(n), W * 0.5, H * 0.60 + 20);
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------------
+ *  SCENE / EFFECT DRAWING
+ * ------------------------------------------------------------------- */
+function rr(x, y, w, h, r) {                    // rounded-rectangle path
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+const STARS = (() => { let s = 99; const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; return Array.from({ length: 110 }, () => ({ x: r(), y: r() * 0.8, p: r() * 6 })); })();
+const FONT = 'Arial, Helvetica, sans-serif';
+
+function drawSky() {
+  const T = curTheme();
+  const g = ctx.createLinearGradient(0, 0, 0, hz); g.addColorStop(0, T.skyA); g.addColorStop(1, T.skyB);
+  ctx.fillStyle = g; ctx.fillRect(-40, -40, W + 80, hz + 42);
+  if (T.stars) { ctx.fillStyle = '#fff'; for (const s of STARS) { ctx.globalAlpha = 0.45 + 0.4 * Math.sin(G.time * 2 + s.p); ctx.fillRect(s.x * W, s.y * hz, 1.6, 1.6); } ctx.globalAlpha = 1; }
+  if (T.moon) { ctx.fillStyle = '#f4f1d8'; ctx.beginPath(); ctx.arc(W * 0.82, hz * 0.28, Math.max(14, H * 0.03), 0, TAU); ctx.fill(); }
+  if (T.sun) {
+    const sx = W * 0.72, sy = hz * 0.9, rr0 = H * 0.07, sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, rr0 * 3);
+    sg.addColorStop(0, 'rgba(255,230,160,1)'); sg.addColorStop(0.25, 'rgba(255,190,110,.75)'); sg.addColorStop(1, 'rgba(255,150,90,0)');
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, hz);
+  }
+  ctx.fillStyle = T.cloud;
+  const t = G.time * 4;
+  for (let i = 0; i < 5; i++) {
+    const cx = ((i * 337 + t * (0.4 + i * 0.1)) % (W + 300)) - 150, cy = hz * (0.16 + 0.13 * (i % 3));
+    ctx.beginPath(); ctx.ellipse(cx, cy, 60 + i * 9, 13 + i * 2, 0, 0, TAU); ctx.ellipse(cx + 34, cy - 7, 38, 12, 0, 0, TAU); ctx.fill();
+  }
+}
+function drawGround() {
+  const T = curTheme();
+  const g = ctx.createLinearGradient(0, hz, 0, H); g.addColorStop(0, T.grassA); g.addColorStop(1, T.grassB);
+  ctx.fillStyle = g; ctx.fillRect(-40, hz, W + 80, H - hz + 40);
+  const x0 = Math.floor(cam.L / 5) - 1, x1 = Math.ceil(cam.R / 5) + 1;
+  ctx.fillStyle = 'rgba(255,255,255,.055)';
+  for (let i = x0; i <= x1; i++) if ((i & 1) === 0) ctx.fillRect(SX(i * 5), hz, 5 * sc + 1, H - hz);
+}
+function drawFloodlights(T) {
+  if (!T.lights) return;
+  for (const fx of [0.09, 0.91]) {
+    const x = W * fx, top = hz - H * 0.34;
+    ctx.fillStyle = '#2a3140'; ctx.fillRect(x - 3, top, 6, hz - top);
+    ctx.fillStyle = '#39414f'; ctx.fillRect(x - 26, top - 12, 52, 22);
+    ctx.fillStyle = '#fffbe6'; for (let r = 0; r < 2; r++) for (let c = 0; c < 5; c++) ctx.fillRect(x - 23 + c * 10, top - 9 + r * 9, 7, 6);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, top, 0, x, top, H * 0.35); g.addColorStop(0, 'rgba(255,245,200,.55)'); g.addColorStop(1, 'rgba(255,245,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - H * 0.35, top - H * 0.35, H * 0.7, H * 0.7); ctx.restore();
+  }
+}
+function drawAtmosphere(T) {
+  if (T.dark > 0) { ctx.fillStyle = 'rgba(2,6,24,' + T.dark + ')'; ctx.fillRect(-40, -40, W + 80, H + 80); }
+  if (T.lights) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const cx = SX(9.5), cy = gy - 0.2 * sc, R = Math.max(W * 0.55, 300), g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    g.addColorStop(0, 'rgba(255,240,190,.22)'); g.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+  }
+  if (FX.rain.length) {
+    ctx.strokeStyle = 'rgba(200,215,255,.38)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (const r of FX.rain) { ctx.moveTo(r.x, r.y); ctx.lineTo(r.x + r.l * 0.18, r.y + r.l); }
+    ctx.stroke();
+  }
+}
+function drawSwingTrail() {                      // motion-blur wedge behind the bat while it swings
+  if (!G.swing.active) return;
+  const t = G.swing.t, B = CFG.BAT;
+  if (Math.abs(batOmega(t)) < 6) return;
+  const hpT = handsAt(t), pt = (r, a) => [SX(hpT.x + r * Math.sin(a)), SY(hpT.y - r * Math.cos(a))];
+  for (let k = 0; k < 6; k++) {
+    const a0 = batAngle(Math.max(0, t - k * 0.009)), a1 = batAngle(Math.max(0, t - (k + 1) * 0.009));
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.3 * (1 - k / 6)) + ')';
+    ctx.beginPath(); let p = pt(B.R1, a0); ctx.moveTo(p[0], p[1]); p = pt(B.R1, a1); ctx.lineTo(p[0], p[1]);
+    p = pt(B.R0, a1); ctx.lineTo(p[0], p[1]); p = pt(B.R0, a0); ctx.lineTo(p[0], p[1]); ctx.closePath(); ctx.fill();
+  }
+}
+function drawDeliveryTag() {                     // floating chip over the bowler naming the delivery
+  const tg = G.tag; if (!tg) return;
+  const age = G.time - tg.t0; if (age > 2.8) { G.tag = null; return; }
+  const bw = G.bowler, x = clamp(SX(bw.x), 100, W - 100), y = SY(2.7) - Math.min(age, 1) * 14;
+  ctx.save(); ctx.globalAlpha = age > 2.2 ? 1 - (age - 2.2) / 0.6 : Math.min(1, age / 0.12);
+  ctx.font = '800 17px ' + FONT; const w1 = ctx.measureText(tg.text).width;
+  ctx.font = '600 12px ' + FONT; const w2 = ctx.measureText(tg.sub).width, w = Math.max(w1, w2) + 26;
+  ctx.fillStyle = 'rgba(8,20,36,.82)'; rr(x - w / 2, y - 22, w, 46, 10); ctx.fill();
+  ctx.strokeStyle = tg.color; ctx.lineWidth = 2; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.fillStyle = tg.color; ctx.font = '800 17px ' + FONT; ctx.fillText(tg.text, x, y - 2);
+  ctx.fillStyle = '#fff'; ctx.font = '600 12px ' + FONT; ctx.fillText(tg.sub, x, y + 16);
+  ctx.restore();
+}
+let showMap = (window.innerWidth || 800) >= 820 && (window.innerHeight || 600) >= 520;
+function drawPitchMap() {                        // top-down map of the last deliveries: shows line, swing and turn
+  if (!showMap) return;
+  const mw = clamp(W * 0.24, 170, 250), mh = mw * (3.6 / 22), mx = 12, my = H - mh - 52;
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,20,36,.62)'; rr(mx - 6, my - 20, mw + 12, mh + 26, 8); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '700 9px ' + FONT; ctx.textAlign = 'left'; ctx.fillText('DELIVERY MAP (top view, last 6)', mx, my - 8);
+  const X = x => mx + (x + 1) / 22 * mw, Z = z => my + mh / 2 + z * (mh / 3.6), u = mh / 3.6;
+  ctx.fillStyle = 'rgba(207,174,116,.6)'; ctx.fillRect(X(0), Z(-1.525), X(20.12) - X(0), 3.05 * u);
+  ctx.fillStyle = '#f1dca3'; ctx.fillRect(X(0) - 1, Z(-0.114), 2, 0.228 * u + 1); ctx.fillRect(X(20.12) - 1, Z(-0.114), 2, 0.228 * u + 1);
+  G.hist.forEach((h, i) => {
+    ctx.globalAlpha = Math.max(0.25, 1 - i * 0.16); ctx.strokeStyle = h.col; ctx.fillStyle = h.col; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(X(h.x0), Z(h.z0));
+    if (h.px !== null) ctx.lineTo(X(h.px), Z(h.pz));
+    if (h.hit) ctx.lineTo(X(h.hx), Z(h.hz)); else if (h.ez !== null) ctx.lineTo(X(0), Z(h.ez));
+    ctx.stroke();
+    if (h.px !== null) { ctx.beginPath(); ctx.arc(X(h.px), Z(h.pz), 3.2, 0, TAU); ctx.fill(); }
+    if (h.hit) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(X(h.hx), Z(h.hz), 3.4, 0, TAU); ctx.stroke(); }
+  });
+  ctx.restore();
+}
+function drawCallout() {
+  const c = G.callout; if (!c) return;
+  const age = G.time - c.t0; if (age > 2.2) { G.callout = null; return; }
+  const fs = clamp(W * 0.14, 70, 190), pop = 1 + 0.5 * Math.exp(-age * 7);
+  ctx.save(); ctx.globalAlpha = age > 1.6 ? 1 - (age - 1.6) / 0.6 : 1; ctx.textAlign = 'center';
+  ctx.translate(W / 2, H * 0.56); ctx.rotate(-0.06); ctx.scale(pop, pop);
+  ctx.font = '900 ' + fs + 'px ' + FONT; ctx.lineJoin = 'round'; ctx.lineWidth = fs * 0.12; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.strokeText(c.text, 0, 0);
+  const g = ctx.createLinearGradient(0, -fs * 0.8, 0, 0); g.addColorStop(0, '#ffffff'); g.addColorStop(1, c.color);
+  ctx.fillStyle = g; ctx.fillText(c.text, 0, 0); ctx.restore();
+}
+function drawLevelBanner() {
+  const b = G.levelBanner; if (!b) return;
+  const age = G.time - b.t0; if (age > 3.8) { G.levelBanner = null; return; }
+  const a = age < 0.4 ? age / 0.4 : age > 3.2 ? 1 - (age - 3.2) / 0.6 : 1, fs = clamp(W * 0.03, 20, 34), y = H * 0.80;
+  ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center';
+  ctx.font = '800 ' + fs + 'px ' + FONT; const w = Math.max(ctx.measureText(b.name).width, ctx.measureText(b.head).width) + 60;
+  ctx.font = '600 ' + fs * 0.5 + 'px ' + FONT; const w2 = ctx.measureText(b.sub).width + 60, ww = Math.max(w, w2);
+  ctx.fillStyle = 'rgba(8,20,36,.8)'; rr(W / 2 - ww / 2, y - fs * 1.25, ww, fs * 2.7, 12); ctx.fill();
+  ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#ffd84a'; ctx.font = '800 ' + fs * 0.55 + 'px ' + FONT; ctx.fillText(b.head, W / 2, y - fs * 0.5);
+  ctx.fillStyle = '#fff'; ctx.font = '900 ' + fs + 'px ' + FONT; ctx.fillText(b.name, W / 2, y + fs * 0.42);
+  ctx.fillStyle = '#cfe0f5'; ctx.font = '600 ' + fs * 0.5 + 'px ' + FONT; ctx.fillText(b.sub, W / 2, y + fs * 1.05);
+  ctx.restore();
+}
+function drawFlash() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (FX.flash > 0.01) { ctx.fillStyle = 'rgba(' + FX.flashCol + ',' + Math.min(0.8, FX.flash) + ')'; ctx.fillRect(0, 0, W, H); }
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, Math.max(W, H) * 0.75);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.3)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
+function drawRopeHit() {                         // marks where a boundary crossed the rope
+  const h = G.ropeHit; if (!h) return;
+  const age = G.time - h.t0; if (age > 3.2) { G.ropeHit = null; return; }
+  const px = clamp(SX(h.x), 50, W - 50), py = clamp(SY(0, h.z), hz + 16, H - 16), col = h.six ? '#ffd84a' : '#7dffa1';
+  ctx.save(); ctx.globalAlpha = age > 2.5 ? 1 - (age - 2.5) / 0.7 : 1;
+  ctx.strokeStyle = col; ctx.lineWidth = 3;
+  const k = Math.min(age / 0.6, 1);
+  ctx.beginPath(); ctx.ellipse(px, py, (0.3 + k * 2.2) * sc * 0.6, Math.max(3, zy((0.3 + k * 2.2) * 0.6)), 0, 0, TAU); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.font = '800 15px ' + FONT; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.7)';
+  const t = h.six ? 'SIX · crossed the rope on the full' : 'FOUR · bounced, then crossed the rope';
+  ctx.strokeText(t, px, py - 22 - Math.min(age, 1) * 8); ctx.fillStyle = col; ctx.fillText(t, px, py - 22 - Math.min(age, 1) * 8);
+  ctx.restore();
+}
+
+function render() {
+  sc = W / (cam.R - cam.L); gy = H * 0.72; hz = H * 0.46; dp = CFG.DEPTH * sc; setDepthView();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#0b1f12'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(DPR, 0, 0, DPR, (Math.random() - 0.5) * 2 * FX.shake * DPR, (Math.random() - 0.5) * 2 * FX.shake * DPR);   // screen shake
+  const T = curTheme();
+  drawSky(); drawStands(); drawFloodlights(T); drawGround(); drawRope(); drawPitch();
+  drawStumpSet(CFG.PITCH_LEN);
+  drawBowler();
+  if (!G.stumpsDown) drawStumpSet(0);
+  drawBatsman();
+  drawParts();
+  drawSwingTrail();
+  drawBall();
+  drawRopeHit();
+  drawAtmosphere(T);
+  FX.draw();
+  drawDeliveryTag();
+  drawPitchMap();
+  drawCountdownBig();
+  drawBanner();
+  drawCallout();
+  drawLevelBanner();
+  drawFlash();
+}
+
+/* ---------------------------------------------------------------------
+ *  INPUT + MAIN LOOP
+ * ------------------------------------------------------------------- */
+function restart() { recordInnings(); resetGame(); cam.L = CFG.VIEW_L; cam.R = CFG.VIEW_R; updateHUD(); }
+function speakerSvg(off, v) {                  // speaker icon: waves grow with volume, cross when muted
+  let s = '<path d="M3 9v6h4l5 4V5L7 9H3z" fill="#fff"/>';
+  if (off) return s + '<path d="M16 9l6 6M22 9l-6 6" stroke="#ff6b5b"/>';
+  if (v > 0) s += '<path d="M15.5 8.6a4.6 4.6 0 0 1 0 6.8"/>';
+  if (v > 0.4) s += '<path d="M18.2 6a8.4 8.4 0 0 1 0 12"/>';
+  if (v > 0.75) s += '<path d="M20.8 3.6a12 12 0 0 1 0 16.8"/>';
+  return s;
+}
+function updateSound() {
+  const off = SFX.isMuted() || SFX.getVolume() === 0, v = SFX.getVolume();
+  $('vol').value = Math.round(v * 100); $('volTxt').textContent = off ? 'Muted' : Math.round(v * 100) + '%';
+  $('spk').innerHTML = speakerSvg(off, v);
+}
+function setVolume(v) {                         // moving the volume up also un-mutes
+  SFX.resume(); SFX.setVolume(v);
+  if (SFX.isMuted() && SFX.getVolume() > 0) SFX.toggleMute();
+  updateSound();
+}
+function toggleMute() {
+  SFX.resume();
+  if (!SFX.isMuted() && SFX.getVolume() === 0) SFX.setVolume(0.8);   // slider at zero: the icon restores sound
+  else SFX.toggleMute();
+  updateSound();
+}
+const hudEl = $('hud');
+function setHud(open) {                         // collapsed = just score, balls and the next-ball countdown
+  hudEl.classList.toggle('min', !open); hudEl.classList.toggle('open', open);
+  $('toggle').innerHTML = open ? '&#10005;' : '&#9776;'; $('toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+setHud((window.innerWidth || 800) >= 820 && (window.innerHeight || 600) >= 520);
+$('toggle').addEventListener('click', e => { setHud(hudEl.classList.contains('min')); e.currentTarget.blur(); });
+$('mapBtn').addEventListener('click', e => { showMap = !showMap; e.currentTarget.textContent = showMap ? 'Hide map' : 'Map'; e.currentTarget.blur(); });
+$('mapBtn').textContent = showMap ? 'Hide map' : 'Map';
+/* ---- home screen / modes */
+const PAGES = ['hmMain', 'hmHow', 'hmCtl', 'hmPrac'];
+function showPage(id) { for (const p of PAGES) $(p).classList.toggle('hidden', p !== id); $('homeFloat').classList.toggle('off', id === 'hmMain'); }
+function updateModeUI() {
+  const t = $('modeTag'), hint = $('hint');
+  t.textContent = mode === 'demo' ? 'DEMO \u00b7 tap or press any key to exit' : mode === 'practice' ? 'PRACTICE \u00b7 no wickets \u00b7 Esc = menu' : '';
+  t.classList.toggle('off', mode === 'match' || appState === 'home');
+}
+function setApp(state) {
+  appState = state; const home = state === 'home';
+  $('home').classList.toggle('hidden', !home); $('hud').classList.toggle('off', home); $('hint').classList.toggle('off', home);
+  if (home) { showPage('hmMain'); $('hmResume').classList.toggle('hidden', !(started && mode !== 'demo')); }
+  updateModeUI(); updateTip();
+}
+function goHome() { SFX.resume(); closeScores(); $('over').classList.add('hidden'); setApp('home'); }
+function resumeGame() { setApp('play'); if (G.over) showOver(); }
+function startMode(m) {
+  SFX.resume();
+  restart();                                       // banks a finished match innings before the mode changes
+  mode = m; started = true; G.demoFor = null; tipKey = ''; tipMin = false;
+  if (m !== 'practice') practiceType = '';
+  setApp('play'); updateHUD();
+}
+$('pracType').innerHTML = '<option value="">Mixed \u2014 whatever the level brings</option>' + Object.keys(DTYPES).map(k => '<option value="' + k + '">' + DTYPES[k].label + '</option>').join('');
+$('pracLvl').innerHTML = LEVELS.map((l, i) => '<option value="' + i + '">' + (i + 1) + ' \u00b7 ' + l.name + ' (' + l.speed[0] + '\u2013' + l.speed[1] + ' km/h)</option>').join('');
+$('tip').addEventListener('click', () => { tipMin = !tipMin; updateTip(); });
+function updatePracTip() { const v = $('pracType').value, k = DTYPES[v] ? v : ''; $('pracTip').innerHTML = '<h2>' + (k ? DTYPES[k].label.toUpperCase() : 'GENERAL TIMING TIP') + '</h2>' + (k ? TIPS[k].tip : GENERAL_TIP); }
+$('pracType').addEventListener('change', updatePracTip); updatePracTip();
+$('home').addEventListener('click', e => { const t = e.target.closest && e.target.closest('button'); if (t) t.blur(); });
+$('hmResume').addEventListener('click', resumeGame);
+$('hmPlay').addEventListener('click', () => startMode('match'));
+$('hmDemo').addEventListener('click', () => startMode('demo'));
+$('bPrac').addEventListener('click', () => { $('pracLvl').value = String(startLevel); showPage('hmPrac'); });
+$('hmPracGo').addEventListener('click', () => {
+  startLevel = +$('pracLvl').value || 0; $('lvlSel').value = String(startLevel); practiceType = $('pracType').value;
+  startMode('practice'); practiceType = $('pracType').value;
+});
+$('bHow').addEventListener('click', () => showPage('hmHow'));
+$('bCtl').addEventListener('click', () => showPage('hmCtl'));
+$('hmScores').addEventListener('click', () => openScores());
+for (const id of ['hmHowBack', 'hmCtlBack', 'hmPracBack']) $(id).addEventListener('click', () => showPage('hmMain'));
+$('menuBtn').addEventListener('click', e => { goHome(); e.currentTarget.blur(); });
+for (const id of ['homeBtn', 'overHome', 'hsHome']) $(id).addEventListener('click', e => { goHome(); if (e.currentTarget && e.currentTarget.blur) e.currentTarget.blur(); });
+$('homeFloat').addEventListener('click', () => showPage('hmMain'));
+function openScores() { hsOpen = true; $('hsList').innerHTML = HS.html(10); $('hs').classList.remove('hidden'); }
+function closeScores() { hsOpen = false; $('hs').classList.add('hidden'); }
+updateSound();
+$('mute').addEventListener('click', e => { toggleMute(); e.currentTarget.blur(); });
+$('vol').addEventListener('input', e => setVolume(+e.target.value / 100));
+$('vol').addEventListener('change', e => { SFX.hit(1, 0.6, false); e.target.blur(); });   // preview crack at the new level
+$('scoresBtn').addEventListener('click', e => { openScores(); e.currentTarget.blur(); });
+$('hsClose').addEventListener('click', closeScores);
+let hsArm = false;
+$('hsClear').addEventListener('click', e => {            // two-step clear (no blocking confirm dialog)
+  const bt = e.currentTarget;
+  if (!hsArm) { hsArm = true; bt.textContent = 'Click again to confirm'; setTimeout(() => { hsArm = false; bt.textContent = 'Clear history'; }, 3000); }
+  else { HS.clear(); hiCache = 0; hsArm = false; bt.textContent = 'Clear history'; $('hsList').innerHTML = HS.html(10); }
+});
+$('lvlSel').innerHTML = LEVELS.map((l, i) => '<option value="' + i + '">' + (i + 1) + ' \u00b7 ' + l.name + '</option>').join('');
+$('lvlSel').addEventListener('change', e => { startLevel = +e.target.value; restart(); e.target.blur(); });
+function onKey(e) {
+  if (e.__cricketHandled) return; e.__cricketHandled = true;      // registered on window and document: handle each key press once
+  const code = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) ? 'Escape' : e.code;
+  SFX.resume();
+  if (appState === 'play' && mode === 'demo' && !(code === 'KeyM' || code === 'ArrowUp' || code === 'ArrowDown')) { e.preventDefault(); if (!e.repeat) goHome(); return; }
+  if (code === 'Space') { e.preventDefault(); if (!e.repeat && appState === 'play') doSwing(); }
+  else if (code === 'KeyR' && !e.repeat) { if (appState === 'play') restart(); }
+  else if (code === 'KeyM' && !e.repeat) toggleMute();
+  else if ((code === 'ArrowUp' || code === 'ArrowDown') && !(e.target && e.target.id === 'vol')) {
+    e.preventDefault(); setVolume(Math.round((SFX.getVolume() + (code === 'ArrowUp' ? 0.1 : -0.1)) * 10) / 10);
+  }
+  else if (code === 'KeyH' && !e.repeat) { if (hsOpen) closeScores(); else openScores(); }
+  else if (code === 'Escape') {
+    if (hsOpen) closeScores();
+    else if (appState === 'play') goHome();
+    else if (!$('hmMain').classList.contains('hidden')) { if (started && mode !== 'demo') resumeGame(); }
+    else showPage('hmMain');
+  }
+}
+window.addEventListener('keydown', onKey, true);
+window.addEventListener('pointerdown', () => { SFX.resume(); try { window.focus(); } catch (e) {} });   // keep keyboard focus (Esc, Space) on the game, also inside frames
+window.addEventListener('keyup', e => { if (e.code === 'Space') e.preventDefault(); });
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); if (appState !== 'play') return; if (mode === 'demo') goHome(); else doSwing(); });
+for (const id of ['restart', 'restart2']) {
+  $(id).addEventListener('click', e => { restart(); e.currentTarget.blur(); });
+}
+window.addEventListener('resize', resize);
+
+let lastTs = null, acc = 0;
+function frame(ts) {
+  if (lastTs === null) lastTs = ts;
+  const rdt = Math.min((ts - lastTs) / 1000, CFG.MAX_FRAME_DT); lastTs = ts;
+  FX.slow = Math.max(0, FX.slow - rdt);                     // slow-motion only while a ball is live; the 5 s gap is never stretched
+  if (appState === 'play') {
+    acc += rdt * ((FX.slow > 0 && G.phase !== 'countdown') ? CFG.SLOWMO_SCALE : 1);
+    while (acc >= CFG.STEP) { update(CFG.STEP); acc -= CFG.STEP; }
+  } else acc = 0;                                           // paused behind the home screen
+  SFX.crowd(FX.excite);
+  updateHUD(); render();
+  requestAnimationFrame(frame);
+}
+
+resetGame(); resize(); updateHUD(); setApp('home');
+window.__cricket = { project: (x, y, z) => [SX(x), SY(y, z)], view: () => ({ sc, gy, hz, dp, zK, zC }), FX, SFX, HS, LEVELS, DTYPES, applyLevel, checkLevelUp, G, CFG, BOWL, update, render, doSwing, restart, resize, planDelivery, solveDelivery,
+  simulateFlight, stepBall, setApp, startMode, goHome, resumeGame, getState: () => ({ mode, appState, started, practiceType }), batAngle, T_IDEAL, SWING_TOTAL, setView: (w, h) => { W = w; H = h; } };
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
