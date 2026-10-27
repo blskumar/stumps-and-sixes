@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "test": "node tests/test_levels.js && node tests/test_boundary.js && node tests/test_dismissal.js && node tests/test_audio_hs.js && node tests/test_profiles.js",
-    "test:e2e": "node tests/e2e/e2e.js && node tests/e2e/e2e2.js && node tests/e2e/tips.js && node tests/e2e/profiles.js",
+    "test:e2e": "node tests/e2e/e2e.js && node tests/e2e/e2e2.js && node tests/e2e/tips.js && node tests/e2e/profiles.js && node tests/e2e/pwa.js",
     "sweep": "node tests/sweep.js 0 4",
     "soak": "node tests/soak.js"
   },

@@ -1,0 +1,4 @@
+# Keep the raw counts file private; only counter.php (with your key) can reveal it.
+<Files "counts.json">
+  Require all denied
+</Files>

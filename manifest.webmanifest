@@ -1,0 +1,19 @@
+{
+  "name": "Stumps & Sixes",
+  "short_name": "Stumps&Sixes",
+  "description": "A free 2D cricket batting game with real ball physics. Time your shot, hit fours and sixes, survive five levels.",
+  "id": "./",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#10301a",
+  "theme_color": "#10301a",
+  "lang": "en",
+  "categories": ["games", "sports"],
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -3,11 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; manifest-src 'self'; worker-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Stumps &amp; Sixes: a 2D cricket batting game with real ball physics. Time your shot, hit fours and sixes, survive five levels.">
 <meta name="theme-color" content="#10301a">
 <title>Stumps &amp; Sixes - Cricket Batting</title>
+<link rel="canonical" href="https://stumpsnd6s.space/">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stumps&amp;Sixes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stumps &amp; Sixes">
+<meta property="og:title" content="Stumps &amp; Sixes - free 2D cricket batting game">
+<meta property="og:description" content="Real ball physics. Time your shot, hit fours and sixes, survive five levels. Play free in your browser or install it on your phone.">
+<meta property="og:url" content="https://stumpsnd6s.space/">
+<meta property="og:image" content="https://stumpsnd6s.space/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stumps &amp; Sixes: cricket stumps and a red ball on a green pitch">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Stumps &amp; Sixes - free 2D cricket batting game">
+<meta name="twitter:description" content="Real ball physics. Time your shot, hit fours and sixes, survive five levels.">
+<meta name="twitter:image" content="https://stumpsnd6s.space/assets/og-image.png">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#10301a;color:#fff;
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -179,6 +201,7 @@
     <button id="bHow" type="button"><span class="ic">&#128214;</span><span>How to Play<small>scoring, boundaries, levels, dismissal</small></span></button>
     <button id="bCtl" type="button"><span class="ic">&#9000;</span><span>Controls<small>keyboard, mouse and touch</small></span></button>
     <button id="hmScores" type="button"><span class="ic">&#127942;</span><span>High Scores<small>your best innings</small></span></button>
+    <button id="hmInstall" type="button" class="hidden"><span class="ic">&#128241;</span><span>Install App<small id="hmInstallSub">play full-screen, even offline</small></span></button>
    </div>
   </div>
 
@@ -1997,6 +2020,7 @@ function startMode(m) {
   mode = m; started = true; G.demoFor = null; tipKey = ''; tipMin = false;
   if (m !== 'practice') practiceType = '';
   setApp('play'); updateHUD();
+  if (m === 'match') ping('match');
 }
 $('pracType').innerHTML = '<option value="">Mixed \u2014 whatever the level brings</option>' + Object.keys(DTYPES).map(k => '<option value="' + k + '">' + DTYPES[k].label + '</option>').join('');
 $('pracLvl').innerHTML = LEVELS.map((l, i) => '<option value="' + i + '">' + (i + 1) + ' \u00b7 ' + l.name + ' (' + l.speed[0] + '\u2013' + l.speed[1] + ' km/h)</option>').join('');
@@ -2082,6 +2106,34 @@ function frame(ts) {
   updateHUD(); render();
   requestAnimationFrame(frame);
 }
+
+/* ---- install as an app + offline support + optional visitor counter ---- */
+const ANALYTICS_URL = '';            // set to your counter endpoint to turn on visit counting (also add its origin to connect-src in the CSP above)
+function ping(ev) {
+  if (!ANALYTICS_URL) return;
+  try { if (NAV.sendBeacon) NAV.sendBeacon(ANALYTICS_URL + '?e=' + encodeURIComponent(ev)); } catch (e) { /* counting is best-effort */ }
+}
+let installEvt = null;
+const NAV = typeof navigator !== 'undefined' ? navigator : {};
+const standalone = () => { try { return matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || NAV.standalone === true; } catch (e) { return false; } };
+const isIOS = /iphone|ipad|ipod/i.test(NAV.userAgent || '') || (NAV.platform === 'MacIntel' && NAV.maxTouchPoints > 1);
+function updateInstallBtn() {
+  const b = $('hmInstall');
+  const show = !standalone() && (installEvt || isIOS);
+  b.classList.toggle('hidden', !show);
+  if (show && !installEvt && isIOS) $('hmInstallSub').textContent = 'tap Share, then Add to Home Screen';
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; updateInstallBtn(); });
+window.addEventListener('appinstalled', () => { installEvt = null; updateInstallBtn(); });
+$('hmInstall').addEventListener('click', () => {
+  if (installEvt) { const ev = installEvt; installEvt = null; ev.prompt(); ev.userChoice.finally(updateInstallBtn); }
+  else if (isIOS) $('hmInstallSub').textContent = 'Safari: tap the Share icon, then "Add to Home Screen"';
+});
+updateInstallBtn();
+if ('serviceWorker' in NAV && typeof location !== 'undefined' && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => { NAV.serviceWorker.register('sw.js').catch(() => { /* offline mode is optional */ }); });
+}
+ping('visit');
 
 resetGame(); resize(); updateHUD(); setApp('home');
 window.__cricket = { project: (x, y, z) => [SX(x), SY(y, z)], view: () => ({ sc, gy, hz, dp, zK, zC }), FX, SFX, HS, LEVELS, DTYPES, applyLevel, checkLevelUp, G, CFG, BOWL, update, render, doSwing, restart, resize, planDelivery, solveDelivery,
